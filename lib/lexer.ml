@@ -20,68 +20,62 @@ type matched_string = {
 (* convert string to Tokens.t *)
 (* tips 1: treat keywords like special identifiers *)
 let convert_identifier = function
-  | "int" -> T.KWInt
-  | "return" -> T.KWReturn
-  | "void" -> T.KWVoid
-  | other -> T.Identifier other
+  | "int"     ->   T.KWInt
+  | "return"  ->   T.KWReturn
+  | "void"    ->   T.KWVoid
+  | other     ->   T.Identifier other
 
 (* convert string to int *)
-let convert_constant str = T.Constant (int_of_string str)
+let convert_constant str = 
+  try T.Constant (int_of_string str)
+  with Failure _ -> raise (LexError ("Invalid constant: " ^ str))
 
 (* convert literal like "(" or ";" to Tokens.t *)
-let convert_literal tok_type _s = tok_type
+let convert_literal tok_type _ = tok_type
+
+let generate_rule regex_str converter = 
+  {re = Re.Pcre.regexp ~flags:[ `ANCHORED ] regex_str; converter}
 
 let match_rules = 
-  let def re_str converter = 
-    {re = Re.Pcre.regexp ~flags:[ `ANCHORED] re_str; converter}
-  in [
-    def {_|[A-Za-z_][A-Za-z0-9_]*\b|_} convert_identifier;
-    (* constants *)
-    def {_|[0-9]+\b|_} convert_constant;
-    (* punctuation *)
-    def {_|\(|_} (convert_literal T.OpenParen);
-    def {_|\)|_} (convert_literal T.CloseParen);
-    def {_|\{|_} (convert_literal T.OpenBrace);
-    def {_|\}|_} (convert_literal T.CloseBrace);
-    def ";" (convert_literal T.Semicolon);
+  [
+    generate_rule {_|[A-Za-z_][A-Za-z0-9_]*\b|_}  convert_identifier;
+    generate_rule {_|[0-9]+\b|_}                  convert_constant;
+    generate_rule {_|\(|_}                        (convert_literal T.OpenParen);
+    generate_rule {_|\)|_}                        (convert_literal T.CloseParen);
+    generate_rule {_|\{|_}                        (convert_literal T.OpenBrace);
+    generate_rule {_|\}|_}                        (convert_literal T.CloseBrace);
+    generate_rule ";"                             (convert_literal T.Semicolon);
   ]
 
-let find_match s mat_rule = 
-  let re = mat_rule.re in
-  let try_match = Re.exec_opt re s in
-  match try_match with
-  | Some x -> Some {matched_substring=Re.Group.get x 0; matched_rule=mat_rule}
+let find_match s rule = 
+  match Re.exec_opt rule.re s with
+  | Some group ->
+      let substr = Re.Group.get group 0 in
+      Some { matched_substring = substr; matched_rule = rule}
   | None -> None
 
 let count_leading_ws s = 
-  let ws_matcher = Re.Pcre.regexp ~flags:[ `ANCHORED ] {|\s+|} in
-  let ws_match = Re.exec_opt ws_matcher s in
-  match ws_match with
+  let ws_re = Re.Pcre.regexp ~flags:[ `ANCHORED ] {|\s+|} in
+  match Re.exec_opt ws_re s with
+  | Some group -> 
+      let _, end_pos = Re.Group.offset group 0 in
+      Some end_pos
   | None -> None
-  | Some x -> let _, match_end = Re.Group.offset x 0 in Some match_end
 
-(* let convert_tokent_to_string = function
-  | T.Identifier _ -> "Identifier"
-  | T.Constant _ -> "Constant"
-  | T.KWInt -> "Int"
-  | T.KWReturn -> "Return"
-  | T.KWVoid -> "Void"
-  | _ -> "Characters" 
-*)
+let token_to_string = function
+  | T.Identifier _  -> "Identifier"
+  | T.Constant _    -> "Constant"
+  | T.KWInt         -> "Int"
+  | T.KWReturn      -> "Return"
+  | T.KWVoid        -> "Void"
+  | _               -> "Characters" 
 
-(* let rec print_list = function
-  | [] -> print_endline ""
-  | {matched_substring;matching_rule} :: t -> begin
-    print_string (matching_rule.converter matched_substring
-    |> convert_tokent_to_string);
+let print_matches matches = 
+  List.iter (fun m -> 
+    print_string (m.matched_rule.converter m.matched_substring |> token_to_string);
     print_char ' ';
-    print_list t;
-  end *)
-
-let compare_match_lengths m1 m2 = 
-  Int.compare
-  (String.length m1.matched_substring)
-  (String.length m2.matched_substring)
+  ) matches;
+  print_newline ()
 
 (* main lexing function *)
 let rec lexer input = 
@@ -91,15 +85,21 @@ let rec lexer input =
     (* have whitespace front of input *)
     | Some x -> lexer (StringUtil.drop x input)
     | None ->
-    (* match_result contains matched_strings that matched succesfully *)
+    (* match_result contains all matched_strings that matched succesfully *)
       let match_result = List.filter_map (find_match input) match_rules in
-      if match_result = [] then raise (LexError input)
-      else begin
-        (* print_list match_result; *)
-        let longest_match = ListUtil.max compare_match_lengths match_result in
-        let converter = longest_match.matched_rule.converter in
-        let matched_substring = longest_match.matched_substring in
-        let next_tok = converter matched_substring in
-        let remaining_input = StringUtil.drop (String.length matched_substring) input
-      in next_tok :: lexer remaining_input
-      end
+      match match_result with
+      | [] -> raise (LexError 
+        ("Unrecognized token at: " ^ String.sub input 0 (min 10 (String.length input))))
+      | _ ->
+          (* Optional: for debug *)
+          print_matches match_result;
+          let longest = 
+            List.fold_left
+              (fun acc m -> if String.length m.matched_substring > String.length acc.matched_substring then m else acc)
+              (List.hd match_result)
+              (List.tl match_result)
+          in
+          let token = longest.matched_rule.converter longest.matched_substring in
+          let remaining = StringUtil.drop (String.length longest.matched_substring)
+            input in
+          token :: lexer remaining

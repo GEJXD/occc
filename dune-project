@@ -19,7 +19,7 @@
  (name occc)
  (synopsis "implementation of book 'Write a C Compiler'")
  (description
-  "`occc` is the self implementation for the book *Writing a C Compiler*. It's a compiler for a subset of C, targeting x86-64 assembly.")
+  "`occc` is a simple C compiler target for x86_64 ISA, adapted from book *Writing a C Compiler* ")
  (depends
   (ocaml
    (>= 4.14.0))
