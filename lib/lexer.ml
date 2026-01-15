@@ -13,7 +13,7 @@ type match_rule = {
 }
 
 type matched_string = {
-  matching_rule : match_rule; (* which rule it matched *)
+  matched_rule : match_rule; (* which rule it matched *)
   matched_substring : string; (* substring matched with regex token_match.re *)
 }
 
@@ -50,7 +50,7 @@ let find_match s mat_rule =
   let re = mat_rule.re in
   let try_match = Re.exec_opt re s in
   match try_match with
-  | Some x -> Some {matched_substring=Re.Group.get x 0; matching_rule=mat_rule}
+  | Some x -> Some {matched_substring=Re.Group.get x 0; matched_rule=mat_rule}
   | None -> None
 
 let count_leading_ws s = 
@@ -60,23 +60,30 @@ let count_leading_ws s =
   | None -> None
   | Some x -> let _, match_end = Re.Group.offset x 0 in Some match_end
 
-let convert_tokent_to_string = function
+(* let convert_tokent_to_string = function
   | T.Identifier _ -> "Identifier"
   | T.Constant _ -> "Constant"
   | T.KWInt -> "Int"
   | T.KWReturn -> "Return"
   | T.KWVoid -> "Void"
   | _ -> "Characters" 
+*)
 
-let rec print_list = function
+(* let rec print_list = function
   | [] -> print_endline ""
   | {matched_substring;matching_rule} :: t -> begin
     print_string (matching_rule.converter matched_substring
     |> convert_tokent_to_string);
     print_char ' ';
     print_list t;
-  end
+  end *)
 
+let compare_match_lengths m1 m2 = 
+  Int.compare
+  (String.length m1.matched_substring)
+  (String.length m2.matched_substring)
+
+(* main lexing function *)
 let rec lexer input = 
   if input = "" then []
   else
@@ -84,14 +91,14 @@ let rec lexer input =
     (* have whitespace front of input *)
     | Some x -> lexer (StringUtil.drop x input)
     | None ->
-    (* match_res contains all string that matched succesfully *)
+    (* match_result contains matched_strings that matched succesfully *)
       let match_result = List.filter_map (find_match input) match_rules in
       if match_result = [] then raise (LexError input)
       else begin
-        print_list match_result;
-        let matched_string = List.hd match_result in
-        let converter = matched_string.matching_rule.converter in
-        let matched_substring = matched_string.matched_substring in
+        (* print_list match_result; *)
+        let longest_match = ListUtil.max compare_match_lengths match_result in
+        let converter = longest_match.matched_rule.converter in
+        let matched_substring = longest_match.matched_substring in
         let next_tok = converter matched_substring in
         let remaining_input = StringUtil.drop (String.length matched_substring) input
       in next_tok :: lexer remaining_input
