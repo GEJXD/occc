@@ -1,0 +1,5 @@
+(executable
+ (public_name occc)
+ (name main)
+ (modes byte exe)
+ (libraries occc cmdliner unix))

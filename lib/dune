@@ -1,0 +1,10 @@
+(include_subdirs unqualified)
+
+(library
+ (name occc)
+ (modules utils tokens lexer settings compile)
+ (libraries re camlp-streams)
+ (preprocess
+  (pps ppx_deriving.show))
+ (instrumentation
+  (backend bisect_ppx)))

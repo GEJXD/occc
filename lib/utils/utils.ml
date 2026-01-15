@@ -1,0 +1,13 @@
+module ListUtil = struct
+  let rec max cmp = function
+    | [] -> failwith "ListUtil.max: empty list"
+    | [x] -> x
+    | h :: t -> let res = max cmp t in
+    let c = cmp h res in 
+    if c > 0 then h
+    else res
+end
+
+module StringUtil = struct
+  let drop n s = String.sub s n (String.length s - n)
+end
