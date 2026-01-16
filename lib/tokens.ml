@@ -1,3 +1,5 @@
+[@@@coverage exclude_file]
+
 type t = 
   (* tokens with contents *)
   | Identifier of string
@@ -12,3 +14,4 @@ type t =
   | OpenBrace
   | CloseBrace
   | Semicolon
+[@@deriving show] (* ppx extension, construct a t.pp *)
