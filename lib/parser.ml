@@ -55,7 +55,7 @@ module Private = struct
     let _ = expect T.OpenBrace tokens in
     let statement = parse_statement tokens in
     let _ = expect T.CloseBrace tokens in
-    Ast.Function_definition {name=fun_name; body=statement}
+    Ast.Function {name=fun_name; body=statement}
 
   let parse_program tokens = 
     let fun_def = parse_function_definition tokens in

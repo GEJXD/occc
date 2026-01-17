@@ -2,7 +2,8 @@
 
 (library
  (name occc)
- (modules utils tokens lexer settings compile ast parser tok_stream)
+ (modules utils tokens lexer settings compile ast parser tok_stream 
+          assembly codegen emit)
  (libraries re camlp-streams)
  (preprocess
   (pps ppx_deriving.show))

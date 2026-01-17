@@ -8,7 +8,7 @@ let current_platform =
     let _ = Unix.close_process_in ic in
     String.lowercase_ascii result
   in 
-  if String.starts_with ~prefix:"Linux" uname_output then Settings.Linux
+  if String.starts_with ~prefix:"linux" uname_output then Settings.Linux
   else Settings.OS_X
 
 let validate_extension filename = 

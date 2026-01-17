@@ -1,6 +1,6 @@
 type exp = Constant of int
 type statement = Return of exp
-type function_definition = Function_definition of 
+type function_definition = Function of 
   {name : string; body : statement}
 
 type t = Program of function_definition
@@ -14,7 +14,7 @@ module PrintAst = struct
   let pp_statement fmt (Return e) =
     fprintf fmt "return %a;" pp_exp e
 
-  let pp_function_definition fmt (Function_definition {name; body}) =
+  let pp_function_definition fmt (Function {name; body}) =
     fprintf fmt "int %s(void) {@\n  %a@\n}" name pp_statement body
 
   let pp_program fmt (Program fdef) =

@@ -5,6 +5,11 @@ let compile stage src_file =
   let tokens = Lexer.lexer source in
   if stage = Settings.Lex then ()
   else
-    let _ = Parser.parser tokens in
+    let ast = Parser.parser tokens in
     if stage = Settings.Parse then ()
-    else ()
+    else 
+      let asm_ast = Codegen.codegen ast in
+      if stage = Settings.Codegen then ()
+      else
+        let asm_filename = Filename.chop_extension src_file ^ ".s" in
+        Emit.emit asm_filename asm_ast
