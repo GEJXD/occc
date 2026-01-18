@@ -36,9 +36,29 @@ module Private = struct
     | T.Constant c -> Ast.Constant c
     | _ -> raise (ParserError "Syntax error")
 
-    (* for now, expression are only a single int *)
-  let parse_exp tokens = 
-    parse_int tokens
+  (* <unop> ::= "-" | "~" *)
+  let parse_unop tokens = 
+    match Tok_stream.take_token tokens with
+    | T.Tilde -> Ast.Complement
+    | T.Hyphen -> Ast.Negate
+    | other -> raise_error ~expected:(Name "a unary operator") ~actual:other
+
+  (* <exp> ::= <int> | <unop> <exp> | "(" <exp> ")" *)
+  let rec parse_exp tokens = 
+    match Tok_stream.peek tokens with
+    | T.Constant _ -> parse_int tokens
+    | T.Tilde | T.Hyphen -> begin
+      let opera = parse_unop tokens in
+      let inner_exp = parse_exp tokens in
+      Unary (opera, inner_exp)
+    end
+    | T.OpenParen -> begin
+        let _ = Tok_stream.take_token tokens in
+        let expr = parse_exp tokens in
+        expect T.CloseParen tokens;
+        expr
+    end
+    | other -> raise_error ~expected:(Name "an expression") ~actual:other
 
   let parse_statement tokens = 
     let _ = expect T.KWReturn tokens in

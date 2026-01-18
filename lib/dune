@@ -1,5 +1,11 @@
 (include_subdirs unqualified)
 
+(env
+ (dev
+  (flags (:standard -warn-error -a)))
+ (release
+  (flags (:standard -warn-error -a))))
+
 (library
  (name occc)
  (modules utils tokens lexer settings compile ast parser tok_stream 
