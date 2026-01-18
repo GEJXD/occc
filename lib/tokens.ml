@@ -14,4 +14,7 @@ type t =
   | OpenBrace
   | CloseBrace
   | Semicolon
+  | Tilde
+  | Hyphen
+  | DoubleHyphen
 [@@deriving show] (* ppx extension, construct a t.pp *)

@@ -45,6 +45,9 @@ let match_rules =
     generate_rule {_|\{|_}                        (convert_literal T.OpenBrace);
     generate_rule {_|\}|_}                        (convert_literal T.CloseBrace);
     generate_rule ";"                             (convert_literal T.Semicolon);
+    generate_rule "-"                             (convert_literal T.Hyphen);
+    generate_rule "--"                            (convert_literal T.DoubleHyphen);
+    generate_rule "~"                             (convert_literal T.Tilde)
   ]
 
 let find_match s rule = 
@@ -68,7 +71,14 @@ let token_to_string = function
   | T.KWInt         -> "Int"
   | T.KWReturn      -> "Return"
   | T.KWVoid        -> "Void"
-  | _               -> "Characters" 
+  | T.Semicolon     -> ";"
+  | T.OpenBrace     -> "{" 
+  | T.CloseBrace    -> "}"
+  | T.OpenParen     -> "("
+  | T.CloseParen    -> ")"
+  | T.Tilde         -> "~"
+  | T.Hyphen        -> "-"
+  | T.DoubleHyphen  -> "--"
 
 let print_matches matches = 
   List.iter (fun m -> 
