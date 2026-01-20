@@ -2,14 +2,30 @@
 
 (env
  (dev
-  (flags (:standard -warn-error -a)))
+  (flags
+   (:standard -warn-error -a)))
  (release
-  (flags (:standard -warn-error -a))))
+  (flags
+   (:standard -warn-error -a))))
 
 (library
  (name occc)
- (modules utils tokens lexer settings compile ast parser tok_stream 
-          assembly codegen emit)
+ (modules
+  utils
+  tokens
+  lexer
+  settings
+  compile
+  ast
+  parser
+  tok_stream
+  assembly
+  codegen
+  emit
+  tacky
+  tacky_gen
+  tacky_print
+  unique_ids)
  (libraries re camlp-streams)
  (preprocess
   (pps ppx_deriving.show))

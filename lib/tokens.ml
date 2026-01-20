@@ -1,6 +1,6 @@
 [@@@coverage exclude_file]
 
-type t = 
+type t =
   (* tokens with contents *)
   | Identifier of string
   | Constant of int
@@ -17,4 +17,5 @@ type t =
   | Tilde
   | Hyphen
   | DoubleHyphen
-[@@deriving show] (* ppx extension, construct a t.pp *)
+[@@deriving show]
+(* ppx extension, construct a t.pp *)
