@@ -7,7 +7,7 @@ end
 exception LexError of string
 
 type match_rule = {
-  re : Re.re (* the regex string to match a token *);
+  re : Re.re; (* the regex string to match a token *)
   converter : string -> Tokens.t;
       (* a handler which convert matched string to token *)
 }

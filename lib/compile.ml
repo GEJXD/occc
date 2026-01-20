@@ -8,7 +8,7 @@ let compile stage src_file =
     if stage = Settings.Parse then ()
     else
       let tacky = Tacky_gen.tacky_gen ast in
-      Tacky_print.debug_print_tacky src_file tacky ;
+      Tacky_print.debug_print_tacky src_file tacky;
       if stage = Settings.Tacky then ()
       else
         let asm_ast = Codegen.codegen ast in

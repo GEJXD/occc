@@ -1,4 +1,4 @@
-profile = ocamlformat
+profile = default
 margin = 80
 wrap-comments = true
 parse-docstrings = true

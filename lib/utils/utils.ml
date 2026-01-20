@@ -1,9 +1,7 @@
 module ListUtil = struct
   let rec max cmp = function
-    | [] ->
-        failwith "ListUtil.max: empty list"
-    | [x] ->
-        x
+    | [] -> failwith "ListUtil.max: empty list"
+    | [ x ] -> x
     | h :: t ->
         let res = max cmp t in
         let c = cmp h res in

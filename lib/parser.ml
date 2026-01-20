@@ -8,10 +8,8 @@ module Private = struct
   type expected = Tok of T.t | Name of string
 
   let pp_expected fmt = function
-    | Tok token ->
-        T.pp fmt token
-    | Name s ->
-        Format.pp_print_string fmt s
+    | Tok token -> T.pp fmt token
+    | Name s -> Format.pp_print_string fmt s
 
   let raise_error ~expected ~actual =
     let msg =
@@ -29,33 +27,25 @@ module Private = struct
 
   let parse_id tokens =
     match Tok_stream.take_token tokens with
-    | T.Identifier x ->
-        x
-    | other ->
-        raise_error ~expected:(Name "an identifier") ~actual:other
+    | T.Identifier x -> x
+    | other -> raise_error ~expected:(Name "an identifier") ~actual:other
 
   let parse_int tokens =
     match Tok_stream.take_token tokens with
-    | T.Constant c ->
-        Ast.Constant c
-    | _ ->
-        raise (ParserError "Syntax error")
+    | T.Constant c -> Ast.Constant c
+    | _ -> raise (ParserError "Syntax error")
 
   (* <unop> ::= "-" | "~" *)
   let parse_unop tokens =
     match Tok_stream.take_token tokens with
-    | T.Tilde ->
-        Ast.Complement
-    | T.Hyphen ->
-        Ast.Negate
-    | other ->
-        raise_error ~expected:(Name "a unary operator") ~actual:other
+    | T.Tilde -> Ast.Complement
+    | T.Hyphen -> Ast.Negate
+    | other -> raise_error ~expected:(Name "a unary operator") ~actual:other
 
   (* <exp> ::= <int> | <unop> <exp> | "(" <exp> ")" *)
   let rec parse_exp tokens =
     match Tok_stream.peek tokens with
-    | T.Constant _ ->
-        parse_int tokens
+    | T.Constant _ -> parse_int tokens
     | T.Tilde | T.Hyphen ->
         let opera = parse_unop tokens in
         let inner_exp = parse_exp tokens in
@@ -63,9 +53,9 @@ module Private = struct
     | T.OpenParen ->
         let _ = Tok_stream.take_token tokens in
         let expr = parse_exp tokens in
-        expect T.CloseParen tokens ; expr
-    | other ->
-        raise_error ~expected:(Name "an expression") ~actual:other
+        expect T.CloseParen tokens;
+        expr
+    | other -> raise_error ~expected:(Name "an expression") ~actual:other
 
   let parse_statement tokens =
     let _ = expect T.KWReturn tokens in
@@ -82,7 +72,7 @@ module Private = struct
     let _ = expect T.OpenBrace tokens in
     let statement = parse_statement tokens in
     let _ = expect T.CloseBrace tokens in
-    Ast.Function {name= fun_name; body= statement}
+    Ast.Function { name = fun_name; body = statement }
 
   let parse_program tokens =
     let fun_def = parse_function_definition tokens in
@@ -96,4 +86,5 @@ let parser tokens =
     let ast = Private.parse_program token_stream in
     let _ = Ast.PrintAst.print_program ast in
     ast
-  with Tok_stream.End_of_stream -> raise (ParserError "Unexpected end of file")
+  with Tok_stream.End_of_stream ->
+    raise (ParserError "Unexpected end of file")
