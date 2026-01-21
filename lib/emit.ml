@@ -11,23 +11,17 @@ let show_operand = function
 let show_label name =
   match !Settings.platform with OS_X -> "_" ^ name | Linux -> name
 
-let show_unary_instruction = function
-  | Neg -> "negl"
-  | Not -> "notl"
+let show_unary_instruction = function Neg -> "negl" | Not -> "notl"
 
 let emit_instruction chan = function
   | Mov (src, dst) ->
-      Printf.fprintf chan "movl %s, %s\n"
-      (show_operand src)
-      (show_operand dst)
+      Printf.fprintf chan "movl %s, %s\n" (show_operand src) (show_operand dst)
   | Unary (op, dst) ->
       Printf.fprintf chan "  %s %s\n"
-      (show_unary_instruction op)
-      (show_operand dst)
-  | AllocateStack i -> 
-    Printf.fprintf chan "  subq $%d, %%rsp\n" i
-  | Ret ->
-      Printf.fprintf chan {|
+        (show_unary_instruction op)
+        (show_operand dst)
+  | AllocateStack i -> Printf.fprintf chan "  subq $%d, %%rsp\n" i
+  | Ret -> Printf.fprintf chan {|
   movq %%rbp, %%rsp
   popq %%rbp
   ret
@@ -40,7 +34,8 @@ let emit_function chan (Function { name; instructions }) =
 %s:
   pushq %%rbp
   movq %%rsp, %%rbp
-|} label label;
+|}
+    label label;
   List.iter (emit_instruction chan) instructions
 
 let emit_stack_note chan =
