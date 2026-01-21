@@ -25,7 +25,9 @@
   tacky
   tacky_gen
   tacky_print
-  unique_ids)
+  unique_ids
+  replace_pseudos
+  instruction_fixup)
  (libraries re camlp-streams)
  (preprocess
   (pps ppx_deriving.show))
