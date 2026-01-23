@@ -30,10 +30,15 @@ module Private = struct
     | T.Identifier x -> x
     | other -> raise_error ~expected:(Name "an identifier") ~actual:other
 
+  let get_precedence = function
+    | T.Star | T.Slash | T.Percent -> Some 50
+    | T.Plus | T.Hyphen -> Some 45
+    | _ -> None
+
   let parse_int tokens =
     match Tok_stream.take_token tokens with
     | T.Constant c -> Ast.Constant c
-    | _ -> raise (ParserError "Syntax error")
+    | other -> raise_error ~expected:(Name "a constant") ~actual:other 
 
   (* <unop> ::= "-" | "~" *)
   let parse_unop tokens =
@@ -42,24 +47,52 @@ module Private = struct
     | T.Hyphen -> Ast.Negate
     | other -> raise_error ~expected:(Name "a unary operator") ~actual:other
 
-  (* <exp> ::= <int> | <unop> <exp> | "(" <exp> ")" *)
-  let rec parse_exp tokens =
+  (* <binop> ::= "-" | "+" | "*" | "/" | "%" *)
+  let parse_binop tokens = 
+    match Tok_stream.take_token tokens with
+    | T.Plus -> Ast.Add
+    | T.Hyphen -> Ast.Subtract
+    | T.Star -> Ast.Multiply
+    | T.Slash -> Ast.Divide
+    | T.Percent -> Ast.Mod
+    | other -> raise_error ~expected:(Name "a binary operator") ~actual:other
+
+  (* <factor> ::= <int> | <unop> <factor> | "(" <exp> ")" *)
+  let rec parse_factor tokens =
     match Tok_stream.peek tokens with
     | T.Constant _ -> parse_int tokens
     | T.Tilde | T.Hyphen ->
         let opera = parse_unop tokens in
-        let inner_exp = parse_exp tokens in
-        Unary (opera, inner_exp)
+        let inner_exp = parse_factor tokens in
+        Ast.Unary (opera, inner_exp)
     | T.OpenParen ->
         let _ = Tok_stream.take_token tokens in
-        let expr = parse_exp tokens in
+        let expr = parse_exp 0 tokens in (* condition like -(2 + 3) *)
         expect T.CloseParen tokens;
         expr
-    | other -> raise_error ~expected:(Name "an expression") ~actual:other
+    | other -> raise_error ~expected:(Name "a factor") ~actual:other
+  and
+  (* <exp> ::= <factor> | <exp> <binop> <exp> *)
+  parse_exp min_prec tokens = 
+    (* like acc in tail recursive, initial value of left-associative *)
+    let initial_factor = parse_factor tokens in
+    let next_token = Tok_stream.peek tokens in
+    let rec parse_exp_loop left token = 
+      match get_precedence token with
+      (* 1 + (2 * 3) => the right subexpression must have
+        higher precedence than left *)
+      | Some prec when prec >= min_prec ->
+          let operator = parse_binop tokens in
+          let right = parse_exp (prec + 1) tokens in
+          let result = Ast.Binary(operator, left, right) in
+          parse_exp_loop result (Tok_stream.peek tokens)
+      (* otherwise, just left-associative *)
+      | _ -> left
+    in parse_exp_loop initial_factor next_token
 
   let parse_statement tokens =
     let _ = expect T.KWReturn tokens in
-    let return_val = parse_exp tokens in
+    let return_val = parse_exp 0 tokens in
     let _ = expect T.Semicolon tokens in
     Ast.Return return_val
 

@@ -48,6 +48,10 @@ let match_rules =
     generate_rule "-" (convert_literal T.Hyphen);
     generate_rule "--" (convert_literal T.DoubleHyphen);
     generate_rule "~" (convert_literal T.Tilde);
+    generate_rule {_|\+|_} (convert_literal T.Plus);
+    generate_rule {_|\*|_} (convert_literal T.Star);
+    generate_rule "/" (convert_literal T.Slash);
+    generate_rule "%" (convert_literal T.Percent);
   ]
 
 let find_match s rule =
@@ -79,6 +83,10 @@ let token_to_string = function
   | T.Tilde -> "~"
   | T.Hyphen -> "-"
   | T.DoubleHyphen -> "--"
+  | T.Plus -> "+"
+  | T.Star -> "*"
+  | T.Slash -> "/"
+  | T.Percent -> "%"
 
 let print_matches matches =
   List.iter

@@ -14,8 +14,15 @@ type t =
   | OpenBrace
   | CloseBrace
   | Semicolon
+  (* unary operator *)
   | Tilde
   | Hyphen
+  (* misc *)
   | DoubleHyphen
+  (* binary operator *)
+  | Plus
+  | Star
+  | Slash
+  | Percent
 [@@deriving show]
 (* ppx extension, construct a t.pp *)
