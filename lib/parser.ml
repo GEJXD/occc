@@ -38,7 +38,7 @@ module Private = struct
   let parse_int tokens =
     match Tok_stream.take_token tokens with
     | T.Constant c -> Ast.Constant c
-    | other -> raise_error ~expected:(Name "a constant") ~actual:other 
+    | other -> raise_error ~expected:(Name "a constant") ~actual:other
 
   (* <unop> ::= "-" | "~" *)
   let parse_unop tokens =
@@ -48,7 +48,7 @@ module Private = struct
     | other -> raise_error ~expected:(Name "a unary operator") ~actual:other
 
   (* <binop> ::= "-" | "+" | "*" | "/" | "%" *)
-  let parse_binop tokens = 
+  let parse_binop tokens =
     match Tok_stream.take_token tokens with
     | T.Plus -> Ast.Add
     | T.Hyphen -> Ast.Subtract
@@ -67,28 +67,31 @@ module Private = struct
         Ast.Unary (opera, inner_exp)
     | T.OpenParen ->
         let _ = Tok_stream.take_token tokens in
-        let expr = parse_exp 0 tokens in (* condition like -(2 + 3) *)
+        let expr = parse_exp 0 tokens in
+        (* condition like -(2 + 3) *)
         expect T.CloseParen tokens;
         expr
     | other -> raise_error ~expected:(Name "a factor") ~actual:other
+
   and
-  (* <exp> ::= <factor> | <exp> <binop> <exp> *)
-  parse_exp min_prec tokens = 
+      (* <exp> ::= <factor> | <exp> <binop> <exp> *)
+      parse_exp min_prec tokens =
     (* like acc in tail recursive, initial value of left-associative *)
     let initial_factor = parse_factor tokens in
     let next_token = Tok_stream.peek tokens in
-    let rec parse_exp_loop left token = 
+    let rec parse_exp_loop left token =
       match get_precedence token with
-      (* 1 + (2 * 3) => the right subexpression must have
-        higher precedence than left *)
+      (* 1 + (2 * 3) => the right subexpression must have higher precedence than
+         left *)
       | Some prec when prec >= min_prec ->
           let operator = parse_binop tokens in
           let right = parse_exp (prec + 1) tokens in
-          let result = Ast.Binary(operator, left, right) in
+          let result = Ast.Binary (operator, left, right) in
           parse_exp_loop result (Tok_stream.peek tokens)
       (* otherwise, just left-associative *)
       | _ -> left
-    in parse_exp_loop initial_factor next_token
+    in
+    parse_exp_loop initial_factor next_token
 
   let parse_statement tokens =
     let _ = expect T.KWReturn tokens in

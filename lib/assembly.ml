@@ -1,10 +1,16 @@
-type reg = AX | R10
+type reg = AX | DX | R10 | R11
 type operand = Imm of int | Reg of reg | Pseudo of string | Stack of int
 type unary_operator = Neg | Not
+
+(* div and mod are same insruction in x64 *)
+type binary_operator = Add | Sub | Mult
 
 type instruction =
   | Mov of operand * operand
   | Unary of unary_operator * operand
+  | Binary of { op : binary_operator; src : operand; dst : operand }
+  | Idiv of operand (* div instruction only take one operand *)
+  | Cdq (* sign extends %eax to %edx *)
   | AllocateStack of int
   | Ret
 

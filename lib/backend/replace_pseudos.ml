@@ -37,10 +37,18 @@ let replace_pseudo_in_instruction state = function
       let state1, new_dst = replace_operand state dst in
       let new_unary = Unary (op, new_dst) in
       (state1, new_unary)
-  | Ret -> (state, Ret)
   | AllocateStack _ ->
       failwith
         "Internal error: AllocateStack shouldn't be present at this point"
+  | Binary { op; src; dst } ->
+      let state1, new_src = replace_operand state src in
+      let state2, new_dst = replace_operand state1 dst in
+      let new_binary = Binary { op; src = new_src; dst = new_dst } in
+      (state2, new_binary)
+  | Idiv operand ->
+      let state1, new_oper = replace_operand state operand in
+      (state1, Idiv new_oper)
+  | (Ret | Cdq) as other -> (state, other)
 
 (* the pseudo are seperated by function scope *)
 let replace_pseudo_in_function (Function { name; instructions }) =
