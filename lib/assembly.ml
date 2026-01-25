@@ -1,9 +1,9 @@
-type reg = AX | DX | R10 | R11
+type reg = AX | DX | CX | R10 | R11
 type operand = Imm of int | Reg of reg | Pseudo of string | Stack of int
 type unary_operator = Neg | Not
 
 (* div and mod are same insruction in x64 *)
-type binary_operator = Add | Sub | Mult
+type binary_operator = Add | Sub | Mult | And | Or | Xor | Shl | Sar
 
 type instruction =
   | Mov of operand * operand

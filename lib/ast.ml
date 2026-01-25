@@ -1,6 +1,16 @@
 type unary_operator = Complement | Negate [@@deriving show]
 
-type binary_operator = Add | Subtract | Multiply | Divide | Mod
+type binary_operator =
+  | Add
+  | Subtract
+  | Multiply
+  | Divide
+  | Mod
+  | BitAnd
+  | BitOr
+  | BitXor
+  | ShiftLeft
+  | ShiftRight
 [@@deriving show]
 
 (* the exp type here are defined recursively, means that we should recursively
@@ -31,6 +41,11 @@ module PrintAst = struct
     | Multiply -> fprintf fmt "*"
     | Divide -> fprintf fmt "/"
     | Mod -> fprintf fmt "%%"
+    | BitAnd -> fprintf fmt "&"
+    | BitOr -> fprintf fmt "|"
+    | BitXor -> fprintf fmt "^"
+    | ShiftLeft -> fprintf fmt "<<"
+    | ShiftRight -> fprintf fmt ">>"
 
   let rec pp_exp fmt = function
     | Constant n -> fprintf fmt "%d" n

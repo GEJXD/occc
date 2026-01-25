@@ -52,6 +52,11 @@ let match_rules =
     generate_rule {_|\*|_} (convert_literal T.Star);
     generate_rule "/" (convert_literal T.Slash);
     generate_rule "%" (convert_literal T.Percent);
+    generate_rule "&" (convert_literal T.Ampersand);
+    generate_rule {_|\||_} (convert_literal T.Pipe);
+    generate_rule {_|\^|_} (convert_literal T.Caret);
+    generate_rule "<<" (convert_literal T.LeftShift);
+    generate_rule ">>" (convert_literal T.RightShift);
   ]
 
 let find_match s rule =
@@ -87,15 +92,17 @@ let token_to_string = function
   | T.Star -> "*"
   | T.Slash -> "/"
   | T.Percent -> "%"
+  | T.LeftShift -> "<<"
+  | T.RightShift -> ">>"
+  | T.Pipe -> "|"
+  | T.Caret -> "^"
+  | T.Ampersand -> "&"
 
 let print_matches matches =
-  List.iter
-    (fun m ->
-      print_string
-        (m.matched_rule.converter m.matched_substring |> token_to_string);
-      print_char ' ')
-    matches;
-  print_newline ()
+  List.iter (fun m ->
+      let tok_str = m.matched_rule.converter m.matched_substring |> token_to_string in
+      Printf.printf "Matched: %s\n%!" tok_str
+  ) matches
 
 (* main lexing function *)
 let rec lexer input =

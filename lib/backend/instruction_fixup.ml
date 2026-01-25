@@ -5,7 +5,11 @@ let fixup_instruction = function
       [ Mov (src, Reg R10); Mov (Reg R10, dst) ]
   | Idiv (Imm i) -> [ Mov (Imm i, Reg R10); Idiv (Reg R10) ]
   | Binary
-      { op = (Add | Sub) as op; src = Stack _ as src; dst = Stack _ as dst } ->
+      {
+        op = (Add | Sub | And | Or | Xor | Shl | Sar) as op;
+        src = Stack _ as src;
+        dst = Stack _ as dst;
+      } ->
       [ Mov (src, Reg R10); Binary { op; src = Reg R10; dst } ]
   | Binary { op = Mult; src; dst = Stack _ as dst } ->
       [

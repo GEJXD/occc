@@ -2,7 +2,17 @@
 
 type unary_operator = Complement | Negate [@@deriving show]
 
-type binary_operator = Add | Subtract | Multiply | Divide | Mod
+type binary_operator =
+  | Add
+  | Subtract
+  | Multiply
+  | Divide
+  | Mod
+  | BitAnd
+  | BitOr
+  | BitXor
+  | ShiftLeft
+  | ShiftRight
 [@@deriving show]
 
 type tacky_val = Constant of int | Var of string [@@deriving show]

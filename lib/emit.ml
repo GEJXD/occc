@@ -3,6 +3,7 @@ open Assembly
 let show_operand = function
   | Reg AX -> "%eax"
   | Reg DX -> "%edx"
+  | Reg CX -> "%ecx"
   | Reg R10 -> "%r10d"
   | Reg R11 -> "%r11d"
   | Stack i -> Printf.sprintf "%d(%%rbp)" i
@@ -19,6 +20,11 @@ let show_binary_instruction = function
   | Add -> "addl"
   | Sub -> "subl"
   | Mult -> "imull"
+  | And -> "andl"
+  | Or -> "orl"
+  | Xor -> "xorl"
+  | Shl -> "shll"
+  | Sar -> "sarl"
 
 let emit_instruction chan = function
   | Mov (src, dst) ->
@@ -29,9 +35,14 @@ let emit_instruction chan = function
         (show_unary_instruction op)
         (show_operand dst)
   | Binary { op; src; dst } ->
+      let src_repr =
+        match (op, src) with
+        | (Shl | Sar), Reg CX -> "%cl"
+        | _ -> show_operand src
+      in
       Printf.fprintf chan "\t%s %s, %s\n"
         (show_binary_instruction op)
-        (show_operand src) (show_operand dst)
+        src_repr (show_operand dst)
   | Idiv operand -> Printf.fprintf chan "\tidivl %s\n" (show_operand operand)
   | Cdq -> Printf.fprintf chan "\tcdq\n"
   | AllocateStack i -> Printf.fprintf chan "\tsubq $%d, %%rsp\n\n" i

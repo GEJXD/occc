@@ -24,5 +24,11 @@ type t =
   | Star
   | Slash
   | Percent
+  (* bitwise operator *)
+  | Ampersand (* & *)
+  | Pipe (* | *)
+  | Caret (* ^ *)
+  | LeftShift (* << *)
+  | RightShift (* >> *)
 [@@deriving show]
 (* ppx extension, construct a t.pp *)

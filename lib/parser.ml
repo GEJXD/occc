@@ -33,6 +33,10 @@ module Private = struct
   let get_precedence = function
     | T.Star | T.Slash | T.Percent -> Some 50
     | T.Plus | T.Hyphen -> Some 45
+    | T.LeftShift | T.RightShift -> Some 40
+    | T.Ampersand -> Some 35
+    | T.Caret -> Some 30
+    | T.Pipe -> Some 25
     | _ -> None
 
   let parse_int tokens =
@@ -55,6 +59,11 @@ module Private = struct
     | T.Star -> Ast.Multiply
     | T.Slash -> Ast.Divide
     | T.Percent -> Ast.Mod
+    | T.Pipe -> Ast.BitOr
+    | T.Caret -> Ast.BitXor
+    | T.Ampersand -> Ast.BitAnd
+    | T.LeftShift -> Ast.ShiftLeft
+    | T.RightShift -> Ast.ShiftRight
     | other -> raise_error ~expected:(Name "a binary operator") ~actual:other
 
   (* <factor> ::= <int> | <unop> <factor> | "(" <exp> ")" *)

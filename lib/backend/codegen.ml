@@ -10,6 +10,11 @@ let convert_binop = function
   | Tacky.Add -> Assembly.Add
   | Tacky.Subtract -> Assembly.Sub
   | Tacky.Multiply -> Assembly.Mult
+  | Tacky.BitXor -> Assembly.Xor
+  | Tacky.BitOr -> Assembly.Or
+  | Tacky.BitAnd -> Assembly.And
+  | Tacky.ShiftLeft -> Assembly.Shl
+  | Tacky.ShiftRight -> Assembly.Sar
   | Tacky.(Divide | Mod) ->
       failwith
         "Internal error: shouldn't handle division like\n\
@@ -28,9 +33,11 @@ let convert_instruction = function
       let asm_src1 = convert_val src1 in
       let asm_src2 = convert_val src2 in
       let asm_dst = convert_val dst in
-      let result_reg = if op = Tacky.Divide then Assembly.AX else Assembly.DX in
       match op with
       | Tacky.Divide | Tacky.Mod ->
+          let result_reg =
+            if op = Tacky.Divide then Assembly.AX else Assembly.DX
+          in
           Assembly.
             [
               Mov (asm_src1, Reg AX);
@@ -38,6 +45,21 @@ let convert_instruction = function
               Idiv asm_src2;
               Mov (Reg result_reg, asm_dst);
             ]
+      (* shl and shr only permit %cl as the src operand *)
+      | Tacky.ShiftLeft | Tacky.ShiftRight ->
+          let shift_op =
+            if op = Tacky.ShiftLeft then Assembly.Shl else Assembly.Sar
+          in
+          let prep_count, count_operand =
+            match asm_src2 with
+            | Assembly.Imm _ as imm -> ([], imm)
+            | _ ->
+                ( [ Assembly.Mov (asm_src2, Reg Assembly.CX) ],
+                  Assembly.Reg Assembly.CX )
+          in
+          Assembly.(
+            (Mov (asm_src1, asm_dst) :: prep_count)
+            @ [ Binary { op = shift_op; src = count_operand; dst = asm_dst } ])
       | _ ->
           let asm_op = convert_binop op in
           Assembly.

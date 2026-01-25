@@ -10,6 +10,11 @@ let pp_binary_operator out = function
   | Multiply -> Format.pp_print_string out "*"
   | Divide -> Format.pp_print_string out "/"
   | Mod -> Format.pp_print_string out "%"
+  | BitAnd -> Format.pp_print_string out "&"
+  | BitOr -> Format.pp_print_string out "|"
+  | BitXor -> Format.pp_print_string out "^"
+  | ShiftLeft -> Format.pp_print_string out "<<"
+  | ShiftRight -> Format.pp_print_string out ">>"
 
 let pp_tacky_val out = function
   | Constant i -> Format.pp_print_int out i
@@ -61,6 +66,11 @@ module TackyPrinter = struct
     | T.Multiply -> "*"
     | T.Divide -> "/"
     | T.Mod -> "%"
+    | T.BitAnd -> "&"
+    | T.BitOr -> "|"
+    | T.BitXor -> "^"
+    | T.ShiftLeft -> "<<"
+    | T.ShiftRight -> ">>"
 
   let print_instruction = function
     | T.Return value ->

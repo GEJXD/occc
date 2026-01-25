@@ -12,6 +12,11 @@ let convert_binop = function
   | Ast.Multiply -> T.Multiply
   | Ast.Divide -> T.Divide
   | Ast.Mod -> T.Mod
+  | Ast.BitAnd -> T.BitAnd
+  | Ast.BitOr -> T.BitOr
+  | Ast.BitXor -> T.BitXor
+  | Ast.ShiftLeft -> T.ShiftLeft
+  | Ast.ShiftRight -> T.ShiftRight
 
 (* return a T.instruction list * T.Var *)
 let rec emit_tacky_for_exp = function
