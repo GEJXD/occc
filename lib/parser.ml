@@ -34,9 +34,13 @@ module Private = struct
     | T.Star | T.Slash | T.Percent -> Some 50
     | T.Plus | T.Hyphen -> Some 45
     | T.LeftShift | T.RightShift -> Some 40
-    | T.Ampersand -> Some 35
-    | T.Caret -> Some 30
-    | T.Pipe -> Some 25
+    | T.LessThan | T.LessOrEqual | T.GreaterThan | T.GreaterOrEqual -> Some 35
+    | T.DoubleEqual | T.NotEqual -> Some 30
+    | T.Ampersand -> Some 29
+    | T.Caret -> Some 28
+    | T.Pipe -> Some 27
+    | T.LogicalAnd -> Some 10
+    | T.LogicalOr -> Some 5
     | _ -> None
 
   let parse_int tokens =
@@ -44,14 +48,16 @@ module Private = struct
     | T.Constant c -> Ast.Constant c
     | other -> raise_error ~expected:(Name "a constant") ~actual:other
 
-  (* <unop> ::= "-" | "~" *)
+  (* <unop> ::= "-" | "~" | "!" *)
   let parse_unop tokens =
     match Tok_stream.take_token tokens with
     | T.Tilde -> Ast.Complement
     | T.Hyphen -> Ast.Negate
+    | T.Bang -> Ast.Not
     | other -> raise_error ~expected:(Name "a unary operator") ~actual:other
 
-  (* <binop> ::= "-" | "+" | "*" | "/" | "%" *)
+  (* <binop> ::= "-" | "+" | "*" | "/" | "%" | "&&" | "||" | "==" | "!=" | "<" |
+     "<=" | ">" | ">=" *)
   let parse_binop tokens =
     match Tok_stream.take_token tokens with
     | T.Plus -> Ast.Add
@@ -64,6 +70,14 @@ module Private = struct
     | T.Ampersand -> Ast.BitAnd
     | T.LeftShift -> Ast.ShiftLeft
     | T.RightShift -> Ast.ShiftRight
+    | T.LogicalAnd -> Ast.And
+    | T.LogicalOr -> Ast.Or
+    | T.DoubleEqual -> Ast.Equal
+    | T.NotEqual -> Ast.NotEqual
+    | T.LessThan -> Ast.LessThan
+    | T.LessOrEqual -> Ast.LessOrEqual
+    | T.GreaterThan -> Ast.GreaterThan
+    | T.GreaterOrEqual -> Ast.GreaterOrEqual
     | other -> raise_error ~expected:(Name "a binary operator") ~actual:other
 
   (* <factor> ::= <int> | <unop> <factor> | "(" <exp> ")" *)
@@ -80,6 +94,10 @@ module Private = struct
         (* condition like -(2 + 3) *)
         expect T.CloseParen tokens;
         expr
+    | T.Bang ->
+        let opera = parse_unop tokens in
+        let inner_exp = parse_factor tokens in
+        Ast.Unary (opera, inner_exp)
     | other -> raise_error ~expected:(Name "a factor") ~actual:other
 
   and

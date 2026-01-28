@@ -1,4 +1,4 @@
-type unary_operator = Complement | Negate [@@deriving show]
+type unary_operator = Complement | Negate | Not [@@deriving show]
 
 type binary_operator =
   | Add
@@ -11,6 +11,14 @@ type binary_operator =
   | BitXor
   | ShiftLeft
   | ShiftRight
+  | And
+  | Or
+  | Equal
+  | NotEqual
+  | LessThan
+  | LessOrEqual
+  | GreaterThan
+  | GreaterOrEqual
 [@@deriving show]
 
 (* the exp type here are defined recursively, means that we should recursively
@@ -32,7 +40,10 @@ module PrintAst = struct
   open Format
 
   let pp_unary_op fmt op =
-    match op with Complement -> fprintf fmt "~" | Negate -> fprintf fmt "-"
+    match op with
+    | Complement -> fprintf fmt "~"
+    | Negate -> fprintf fmt "-"
+    | Not -> fprintf fmt "!"
 
   let pp_binary_op fmt op =
     match op with
@@ -46,6 +57,14 @@ module PrintAst = struct
     | BitXor -> fprintf fmt "^"
     | ShiftLeft -> fprintf fmt "<<"
     | ShiftRight -> fprintf fmt ">>"
+    | And -> fprintf fmt "&&"
+    | Or -> fprintf fmt "||"
+    | Equal -> fprintf fmt "=="
+    | NotEqual -> fprintf fmt "!="
+    | LessThan -> fprintf fmt "<"
+    | LessOrEqual -> fprintf fmt "<="
+    | GreaterThan -> fprintf fmt ">"
+    | GreaterOrEqual -> fprintf fmt ">="
 
   let rec pp_exp fmt = function
     | Constant n -> fprintf fmt "%d" n

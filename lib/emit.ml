@@ -28,24 +28,24 @@ let show_binary_instruction = function
 
 let emit_instruction chan = function
   | Mov (src, dst) ->
-      Printf.fprintf chan "\tmovl %s, %s\n" (show_operand src)
+      Printf.fprintf chan "    movl %s, %s\n" (show_operand src)
         (show_operand dst)
   | Unary (op, dst) ->
-      Printf.fprintf chan "\t%s %s\n"
+      Printf.fprintf chan "    %s %s\n"
         (show_unary_instruction op)
         (show_operand dst)
   | Binary { op; src; dst } ->
       let src_repr =
         match (op, src) with
-        | (Shl | Sar), Reg CX -> "%cl"
+        | (Shl | Sar), Reg CX -> "    %cl"
         | _ -> show_operand src
       in
-      Printf.fprintf chan "\t%s %s, %s\n"
+      Printf.fprintf chan "    %s %s, %s\n"
         (show_binary_instruction op)
         src_repr (show_operand dst)
-  | Idiv operand -> Printf.fprintf chan "\tidivl %s\n" (show_operand operand)
-  | Cdq -> Printf.fprintf chan "\tcdq\n"
-  | AllocateStack i -> Printf.fprintf chan "\tsubq $%d, %%rsp\n\n" i
+  | Idiv operand -> Printf.fprintf chan "    idivl %s\n" (show_operand operand)
+  | Cdq -> Printf.fprintf chan "cdq\n"
+  | AllocateStack i -> Printf.fprintf chan "    subq $%d, %%rsp\n\n" i
   | Ret ->
       Printf.fprintf chan {|
     movq %%rbp, %%rsp
@@ -68,7 +68,7 @@ let emit_function chan (Function { name; instructions }) =
 let emit_stack_note chan =
   match !Settings.platform with
   | OS_X -> ()
-  | Linux -> Printf.fprintf chan "\t.section .note.GNU-stack,\"\",@progbits\n"
+  | Linux -> Printf.fprintf chan "    .section .note.GNU-stack,\"\",@progbits\n"
 
 (* show program *)
 let emit assembly_file (Program function_def) =

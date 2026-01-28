@@ -8,27 +8,37 @@ type t =
   | KWInt
   | KWReturn
   | KWVoid
-  (* punctuation *)
+  (* punctuations *)
   | OpenParen
   | CloseParen
   | OpenBrace
   | CloseBrace
   | Semicolon
-  (* unary operator *)
+  (* unary operators *)
   | Tilde
   | Hyphen
   (* misc *)
   | DoubleHyphen
-  (* binary operator *)
+  (* binary operators *)
   | Plus
   | Star
   | Slash
   | Percent
-  (* bitwise operator *)
+  (* bitwise operators *)
   | Ampersand (* & *)
   | Pipe (* | *)
   | Caret (* ^ *)
   | LeftShift (* << *)
   | RightShift (* >> *)
+  (* logical operator *)
+  | Bang (* ! *)
+  | LogicalAnd (* && *)
+  | LogicalOr (* !! *)
+  | DoubleEqual (* == *)
+  | NotEqual (* != *)
+  | LessThan (* < *)
+  | GreaterThan (* > *)
+  | LessOrEqual (* <= *)
+  | GreaterOrEqual (* >= *)
 [@@deriving show]
 (* ppx extension, construct a t.pp *)

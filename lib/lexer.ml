@@ -57,6 +57,15 @@ let match_rules =
     generate_rule {_|\^|_} (convert_literal T.Caret);
     generate_rule "<<" (convert_literal T.LeftShift);
     generate_rule ">>" (convert_literal T.RightShift);
+    generate_rule "!" (convert_literal T.Bang);
+    generate_rule "&&" (convert_literal T.LogicalAnd);
+    generate_rule {_|\|\||_} (convert_literal T.LogicalOr);
+    generate_rule "==" (convert_literal T.DoubleEqual);
+    generate_rule "!=" (convert_literal T.NotEqual);
+    generate_rule "<" (convert_literal T.LessThan);
+    generate_rule ">" (convert_literal T.GreaterThan);
+    generate_rule "<=" (convert_literal T.LessOrEqual);
+    generate_rule ">=" (convert_literal T.GreaterOrEqual);
   ]
 
 let find_match s rule =
@@ -97,12 +106,24 @@ let token_to_string = function
   | T.Pipe -> "|"
   | T.Caret -> "^"
   | T.Ampersand -> "&"
+  | T.Bang -> "!"
+  | T.LogicalAnd -> "&&"
+  | T.LogicalOr -> "||"
+  | T.DoubleEqual -> "=="
+  | T.NotEqual -> "!="
+  | T.LessThan -> "<"
+  | T.GreaterThan -> ">"
+  | T.LessOrEqual -> "<="
+  | T.GreaterOrEqual -> ">="
 
 let print_matches matches =
-  List.iter (fun m ->
-      let tok_str = m.matched_rule.converter m.matched_substring |> token_to_string in
-      Printf.printf "Matched: %s\n%!" tok_str
-  ) matches
+  List.iter
+    (fun m ->
+      let tok_str =
+        m.matched_rule.converter m.matched_substring |> token_to_string
+      in
+      Printf.printf "Matched: %s\n%!" tok_str)
+    matches
 
 (* main lexing function *)
 let rec lexer input =
