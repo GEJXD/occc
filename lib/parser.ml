@@ -84,7 +84,7 @@ module Private = struct
   let rec parse_factor tokens =
     match Tok_stream.peek tokens with
     | T.Constant _ -> parse_int tokens
-    | T.Tilde | T.Hyphen ->
+    | T.Tilde | T.Hyphen | T.Bang ->
         let opera = parse_unop tokens in
         let inner_exp = parse_factor tokens in
         Ast.Unary (opera, inner_exp)
@@ -94,10 +94,6 @@ module Private = struct
         (* condition like -(2 + 3) *)
         expect T.CloseParen tokens;
         expr
-    | T.Bang ->
-        let opera = parse_unop tokens in
-        let inner_exp = parse_factor tokens in
-        Ast.Unary (opera, inner_exp)
     | other -> raise_error ~expected:(Name "a factor") ~actual:other
 
   and
