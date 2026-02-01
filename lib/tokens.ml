@@ -40,5 +40,7 @@ type t =
   | GreaterThan (* > *)
   | LessOrEqual (* <= *)
   | GreaterOrEqual (* >= *)
+  (* local variables *)
+  | EqualSign (* = *)
 [@@deriving show]
 (* ppx extension, construct a t.pp *)

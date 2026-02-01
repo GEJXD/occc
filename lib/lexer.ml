@@ -66,6 +66,7 @@ let match_rules =
     generate_rule ">" (convert_literal T.GreaterThan);
     generate_rule "<=" (convert_literal T.LessOrEqual);
     generate_rule ">=" (convert_literal T.GreaterOrEqual);
+    generate_rule "=" (convert_literal T.EqualSign);
   ]
 
 let find_match s rule =
@@ -115,6 +116,7 @@ let token_to_string = function
   | T.GreaterThan -> ">"
   | T.LessOrEqual -> "<="
   | T.GreaterOrEqual -> ">="
+  | T.EqualSign -> "="
 
 let print_matches matches =
   List.iter

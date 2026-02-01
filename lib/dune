@@ -17,6 +17,7 @@
   settings
   compile
   ast
+  ast_print
   parser
   tok_stream
   assembly
@@ -27,7 +28,8 @@
   tacky_print
   unique_ids
   replace_pseudos
-  instruction_fixup)
+  instruction_fixup
+  resolve)
  (libraries re camlp-streams)
  (preprocess
   (pps ppx_deriving.show))

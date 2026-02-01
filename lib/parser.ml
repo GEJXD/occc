@@ -41,6 +41,7 @@ module Private = struct
     | T.Pipe -> Some 27
     | T.LogicalAnd -> Some 10
     | T.LogicalOr -> Some 5
+    | T.EqualSign -> Some 1
     | _ -> None
 
   let parse_int tokens =
@@ -57,7 +58,7 @@ module Private = struct
     | other -> raise_error ~expected:(Name "a unary operator") ~actual:other
 
   (* <binop> ::= "-" | "+" | "*" | "/" | "%" | "&&" | "||" | "==" | "!=" | "<" |
-     "<=" | ">" | ">=" *)
+     "<=" | ">" | ">=" | "=" *)
   let parse_binop tokens =
     match Tok_stream.take_token tokens with
     | T.Plus -> Ast.Add
@@ -80,10 +81,12 @@ module Private = struct
     | T.GreaterOrEqual -> Ast.GreaterOrEqual
     | other -> raise_error ~expected:(Name "a binary operator") ~actual:other
 
-  (* <factor> ::= <int> | <unop> <factor> | "(" <exp> ")" *)
+  (* <factor> ::= <int> | <identifier> | <unop> <factor> | "(" <exp> ")" *)
   let rec parse_factor tokens =
     match Tok_stream.peek tokens with
     | T.Constant _ -> parse_int tokens
+    | T.Identifier _ -> Ast.Var (parse_id tokens)
+    (* Unary expressions *)
     | T.Tilde | T.Hyphen | T.Bang ->
         let opera = parse_unop tokens in
         let inner_exp = parse_factor tokens in
@@ -96,31 +99,65 @@ module Private = struct
         expr
     | other -> raise_error ~expected:(Name "a factor") ~actual:other
 
-  and
-      (* <exp> ::= <factor> | <exp> <binop> <exp> *)
-      parse_exp min_prec tokens =
-    (* like acc in tail recursive, initial value of left-associative *)
+  and parse_exp min_prec tokens =
     let initial_factor = parse_factor tokens in
     let next_token = Tok_stream.peek tokens in
-    let rec parse_exp_loop left token =
-      match get_precedence token with
-      (* 1 + (2 * 3) => the right subexpression must have higher precedence than
-         left *)
+    let rec parse_exp_loop left next =
+      match get_precedence next with
       | Some prec when prec >= min_prec ->
-          let operator = parse_binop tokens in
-          let right = parse_exp (prec + 1) tokens in
-          let result = Ast.Binary (operator, left, right) in
+          let result =
+            if next = T.EqualSign then
+              (* let _ = expect T.EqualSign tokens in *)
+              let _ = Tok_stream.take_token tokens in
+              let right = parse_exp prec tokens in
+              Ast.Assignment (left, right)
+            else
+              let operator = parse_binop tokens in
+              let right = parse_exp (prec + 1) tokens in
+              Ast.Binary (operator, left, right)
+          in
           parse_exp_loop result (Tok_stream.peek tokens)
-      (* otherwise, just left-associative *)
       | _ -> left
     in
     parse_exp_loop initial_factor next_token
 
   let parse_statement tokens =
-    let _ = expect T.KWReturn tokens in
-    let return_val = parse_exp 0 tokens in
-    let _ = expect T.Semicolon tokens in
-    Ast.Return return_val
+    match Tok_stream.peek tokens with
+    (* "return" <exp> ";" *)
+    | T.KWReturn ->
+        let _ = expect T.KWReturn tokens in
+        let return_val = parse_exp 0 tokens in
+        let _ = expect T.Semicolon tokens in
+        Ast.Return return_val
+    (* ";" *)
+    | T.Semicolon ->
+        let _ = Tok_stream.take_token tokens in
+        Ast.Null
+    (* <exp> ";" *)
+    | _ ->
+        let exp = parse_exp 0 tokens in
+        let _ = expect T.Semicolon tokens in
+        Ast.Expression exp
+
+  let parse_declaration tokens =
+    let _ = expect T.KWInt tokens in
+    let var_name = parse_id tokens in
+    let init =
+      match Tok_stream.take_token tokens with
+      | T.Semicolon -> None
+      | T.EqualSign ->
+          let init_exp = parse_exp 0 tokens in
+          let _ = expect T.Semicolon tokens in
+          Some init_exp
+      | other ->
+          raise_error ~expected:(Name "An initializer or semicolon")
+            ~actual:other
+    in
+    Ast.Declaration { name = var_name; init }
+
+  let parse_block_item tokens =
+    if Tok_stream.peek tokens = T.KWInt then Ast.D (parse_declaration tokens)
+    else Ast.S (parse_statement tokens)
 
   let parse_function_definition tokens =
     let _ = expect T.KWInt tokens in
@@ -129,9 +166,15 @@ module Private = struct
     let _ = expect T.KWVoid tokens in
     let _ = expect T.CloseParen tokens in
     let _ = expect T.OpenBrace tokens in
-    let statement = parse_statement tokens in
+    let rec parse_block_item_loop () =
+      if Tok_stream.peek tokens = T.CloseBrace then []
+      else
+        let next_block_item = parse_block_item tokens in
+        next_block_item :: parse_block_item_loop ()
+    in
+    let body = parse_block_item_loop () in
     let _ = expect T.CloseBrace tokens in
-    Ast.Function { name = fun_name; body = statement }
+    Ast.Function { name = fun_name; body }
 
   let parse_program tokens =
     let fun_def = parse_function_definition tokens in
@@ -143,7 +186,7 @@ let parser tokens =
   try
     let token_stream = Tok_stream.of_list tokens in
     let ast = Private.parse_program token_stream in
-    let _ = Ast.PrintAst.print_program ast in
+    let _ = Ast_print.print_program ast in
     ast
   with Tok_stream.End_of_stream ->
     raise (ParserError "Unexpected end of file")

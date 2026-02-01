@@ -97,6 +97,7 @@ and emit_or_expressiont e1 e2 =
 
 (* return a instructions list. for now statement only have Return
    instruction. *)
+(*
 let emit_tacky_for_statement (Ast.Return exp) =
   let instr_lst, dst = emit_tacky_for_exp exp in
   instr_lst @ [ T.Return dst ]
@@ -107,3 +108,7 @@ let emit_tacky_for_function (Ast.Function { name; body }) =
   T.Function { name; body = instr_lst }
 
 let tacky_gen (Ast.Program fn_def) = T.Program (emit_tacky_for_function fn_def)
+*)
+
+let tacky_gen (Ast.Program _) =
+  T.Program (T.Function { name = "foo"; body = [ T.Return (T.Constant 1) ] })
