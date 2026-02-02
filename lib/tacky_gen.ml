@@ -27,13 +27,21 @@ let convert_binop = function
   | Ast.And | Ast.Or ->
       failwith "Internal error. cannot conovert these directly to TACKY binops"
 
-(* return a T.instruction list * T.Var *)
+(* return a T.instruction list * T.Var, means (instr_lst, result) *)
 let rec emit_tacky_for_exp = function
   | Ast.Constant c -> ([], T.Constant c)
+  | Ast.Var v -> ([], T.Var v)
   | Ast.Unary (op, inner) -> emit_unary_expression op inner
   | Ast.Binary (Ast.And, e1, e2) -> emit_and_expression e1 e2
   | Ast.Binary (Ast.Or, e1, e2) -> emit_or_expressiont e1 e2
   | Ast.Binary (op, e1, e2) -> emit_binary_expression op e1 e2
+  | Ast.Assignment (Ast.Var v, rhs) ->
+      let rhs_instructions, rhs_result = emit_tacky_for_exp rhs in
+      let instr_lst =
+        rhs_instructions @ [ T.Copy { src = rhs_result; dst = T.Var v } ]
+      in
+      (instr_lst, rhs_result)
+  | Ast.Assignment _ -> failwith "Internal Error: bad lvalue"
 
 and emit_unary_expression op inner =
   let eval_inner, v = emit_tacky_for_exp inner in
@@ -97,18 +105,27 @@ and emit_or_expressiont e1 e2 =
 
 (* return a instructions list. for now statement only have Return
    instruction. *)
-(*
-let emit_tacky_for_statement (Ast.Return exp) =
-  let instr_lst, dst = emit_tacky_for_exp exp in
-  instr_lst @ [ T.Return dst ]
+let emit_tacky_for_statement = function
+  | Ast.Return exp ->
+      let eval_exp, result = emit_tacky_for_exp exp in
+      eval_exp @ [ T.Return result ]
+  | Ast.Expression exp ->
+      let eval_exp, _ = emit_tacky_for_exp exp in
+      eval_exp
+  | Ast.Null -> []
+
+let emit_tacky_for_block_item = function
+  | Ast.S s -> emit_tacky_for_statement s
+  | Ast.D (Declaration { name; init = Some e }) ->
+      let eval_assignment, _ =
+        emit_tacky_for_exp (Ast.Assignment (Var name, e))
+      in
+      eval_assignment
+  | Ast.D (Declaration { init = None; _ }) -> []
 
 let emit_tacky_for_function (Ast.Function { name; body }) =
-  let instr_lst = emit_tacky_for_statement body in
-  Tacky_print.TackyPrinter.print_list instr_lst;
-  T.Function { name; body = instr_lst }
+  let body_instructions = List.concat_map emit_tacky_for_block_item body in
+  let extra_return = T.(Return (Constant 0)) in
+  Tacky.Function { name; body = body_instructions @ [ extra_return ] }
 
 let tacky_gen (Ast.Program fn_def) = T.Program (emit_tacky_for_function fn_def)
-*)
-
-let tacky_gen (Ast.Program _) =
-  T.Program (T.Function { name = "foo"; body = [ T.Return (T.Constant 1) ] })

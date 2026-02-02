@@ -23,6 +23,7 @@ let rec resolve_exp var_map = function
       Binary (op, resolve_exp var_map e1, resolve_exp var_map e2)
   | Constant _ as c -> c
 
+(* rename a to a.1 a.2 ... *)
 let resolve_declaration var_map (Declaration { name; init }) =
   if StringMap.mem name var_map then failwith "Duplicate variable declaration"
   else
