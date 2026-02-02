@@ -27,6 +27,18 @@ let convert_binop = function
   | Ast.And | Ast.Or ->
       failwith "Internal error. cannot conovert these directly to TACKY binops"
 
+let convert_comop = function
+  | Ast.AddAssign -> T.Add
+  | Ast.SubtractAssign -> T.Subtract
+  | Ast.MultiplyAssign -> T.Multiply
+  | Ast.DivideAssign -> T.Divide
+  | Ast.ModAssign -> T.Mod
+  | Ast.BitAndAssign -> T.BitAnd
+  | Ast.BitOrAssign -> T.BitOr
+  | Ast.BitXorAssign -> T.BitXor
+  | Ast.ShiftLeftAssign -> T.ShiftLeft
+  | Ast.ShiftRightAssign -> T.ShiftRight
+
 (* return a T.instruction list * T.Var, means (instr_lst, result) *)
 let rec emit_tacky_for_exp = function
   | Ast.Constant c -> ([], T.Constant c)
@@ -42,6 +54,23 @@ let rec emit_tacky_for_exp = function
       in
       (instr_lst, rhs_result)
   | Ast.Assignment _ -> failwith "Internal Error: bad lvalue"
+  | Ast.CompoundAssign (op, Ast.Var v, rhs) ->
+    let rhs_instructions, rhs_result = emit_tacky_for_exp rhs in
+    let var_value = T.Var v in
+    let temp_result = T.Var (Unique_ids.make_temporary ()) in
+    let binary_op = convert_comop op in
+    let binary_instr = T.Binary { 
+      op = binary_op; 
+      src1 = var_value; 
+      src2 = rhs_result; 
+      dst = temp_result 
+    } in
+    let copy_instr = T.Copy { src = temp_result; dst = var_value } in
+    let instr_lst = 
+      rhs_instructions @ [ binary_instr; copy_instr ] 
+    in
+    (instr_lst, temp_result)
+  | Ast.CompoundAssign _ -> failwith "Internal Error: bad lvalue"
 
 and emit_unary_expression op inner =
   let eval_inner, v = emit_tacky_for_exp inner in

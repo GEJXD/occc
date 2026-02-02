@@ -1,19 +1,19 @@
 open Ast
 module StringMap = Map.Make (String)
 
+let check_lvalue = function Var _ -> true | _ -> false
+
 let rec resolve_exp var_map = function
+  | Constant _ as c -> c
   | Assignment (left, right) ->
-      let _ =
-        match left with
-        | Var _ -> ()
-        | _ ->
-            failwith
-              (Format.asprintf
-                 "Expected expression on left-hand side of assignment \
-                  statement, found %a"
-                 pp_exp left)
-      in
-      Assignment (resolve_exp var_map left, resolve_exp var_map right)
+      if check_lvalue left then
+        Assignment (resolve_exp var_map left, resolve_exp var_map right)
+      else
+        failwith
+          (Format.asprintf
+             "Expected expression on left-hand side of assignment statement, \
+              found %a"
+             pp_exp left)
   | Var id -> begin
       try Var (StringMap.find id var_map)
       with Not_found -> failwith (Printf.sprintf "Undeclared variable %s" id)
@@ -21,7 +21,15 @@ let rec resolve_exp var_map = function
   | Unary (op, e) -> Unary (op, resolve_exp var_map e)
   | Binary (op, e1, e2) ->
       Binary (op, resolve_exp var_map e1, resolve_exp var_map e2)
-  | Constant _ as c -> c
+  | CompoundAssign (op, left, right) ->
+      if check_lvalue left then
+        CompoundAssign (op, resolve_exp var_map left, resolve_exp var_map right)
+      else
+        failwith
+          (Format.asprintf
+             "Expected expression on left-hand side of assignment statement, \
+              found %a"
+             pp_exp left)
 
 (* rename a to a.1 a.2 ... *)
 let resolve_declaration var_map (Declaration { name; init }) =

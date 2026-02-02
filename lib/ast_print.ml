@@ -30,6 +30,19 @@ let print_binary_operator op =
   | GreaterThan -> ">"
   | GreaterOrEqual -> ">="
 
+let print_compound_operator op =
+  match op with
+  | AddAssign -> "+="
+  | SubtractAssign -> "-="
+  | MultiplyAssign -> "*="
+  | DivideAssign -> "/="
+  | ModAssign -> "%="
+  | BitAndAssign -> "&="
+  | BitOrAssign -> "|="
+  | BitXorAssign -> "^="
+  | ShiftLeftAssign -> "<<="
+  | ShiftRightAssign -> ">>="
+
 let rec print_exp ?(indent = 0) exp =
   print_indent indent;
   match exp with
@@ -52,6 +65,14 @@ let rec print_exp ?(indent = 0) exp =
       printf "Assignment(\n";
       print_exp ~indent:(indent + 1) var;
       print_exp ~indent:(indent + 1) value;
+      print_indent indent;
+      printf ")\n"
+  | CompoundAssign (op, left, right) ->
+      (* 新增：复合赋值节点 *)
+      let op_str = print_compound_operator op in
+      printf "CompoundAssign(%s, \n" op_str;
+      print_exp ~indent:(indent + 1) left;
+      print_exp ~indent:(indent + 1) right;
       print_indent indent;
       printf ")\n"
 
@@ -126,7 +147,7 @@ let print_program prog =
 let rec print_exp_inline exp =
   match exp with
   | Constant n -> sprintf "%d" n
-  | Var name -> sprintf "Var(%s)" name
+  | Var name -> sprintf "%s" name
   | Unary (op, operand) ->
       sprintf "(%s%s)" (print_unary_operator op) (print_exp_inline operand)
   | Binary (op, left, right) ->
@@ -134,3 +155,7 @@ let rec print_exp_inline exp =
         (print_exp_inline right)
   | Assignment (var, value) ->
       sprintf "(%s = %s)" (print_exp_inline var) (print_exp_inline value)
+  | CompoundAssign (op, left, right) ->
+      sprintf "(%s %s %s)" (print_exp_inline left)
+        (print_compound_operator op)
+        (print_exp_inline right)

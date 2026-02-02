@@ -67,6 +67,16 @@ let match_rules =
     generate_rule "<=" (convert_literal T.LessOrEqual);
     generate_rule ">=" (convert_literal T.GreaterOrEqual);
     generate_rule "=" (convert_literal T.EqualSign);
+    generate_rule {_|\+=|_} (convert_literal T.PlusEqual);
+    generate_rule "-=" (convert_literal T.HyphenEqual);
+    generate_rule {_|\*=|_} (convert_literal T.StarEqual);
+    generate_rule "/=" (convert_literal T.SlashEqual);
+    generate_rule "%=" (convert_literal T.PercentEqual);
+    generate_rule "&=" (convert_literal T.AmpersandEqual);
+    generate_rule {_|\|=|_} (convert_literal T.PipeEqual);
+    generate_rule {_|\^=|_} (convert_literal T.CaretEqual);
+    generate_rule "<<=" (convert_literal T.LeftShiftEqual);
+    generate_rule ">>=" (convert_literal T.RightShiftEqual);
   ]
 
 let find_match s rule =
@@ -117,6 +127,16 @@ let token_to_string = function
   | T.LessOrEqual -> "<="
   | T.GreaterOrEqual -> ">="
   | T.EqualSign -> "="
+  | T.PlusEqual -> "+="
+  | T.HyphenEqual -> "-="
+  | T.StarEqual -> "*="
+  | T.SlashEqual -> "/="
+  | T.PercentEqual -> "%="
+  | T.AmpersandEqual -> "&="
+  | T.PipeEqual -> "|="
+  | T.CaretEqual -> "^="
+  | T.LeftShiftEqual -> "<<="
+  | T.RightShiftEqual -> ">>="
 
 let print_matches matches =
   List.iter

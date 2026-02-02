@@ -21,6 +21,19 @@ type binary_operator =
   | GreaterOrEqual
 [@@deriving show]
 
+type compound_operator =
+  | AddAssign (* += *)
+  | SubtractAssign (* -= *)
+  | MultiplyAssign (* *= *)
+  | DivideAssign (* /= *)
+  | ModAssign (* %= *)
+  | BitAndAssign (* &= *)
+  | BitOrAssign (* |= *)
+  | BitXorAssign (* ^= *)
+  | ShiftLeftAssign (* <<= *)
+  | ShiftRightAssign (* >>= *)
+[@@deriving show]
+
 (* the exp type here are defined recursively, means that we should recursively
    parse the inner exp *)
 type exp =
@@ -29,6 +42,7 @@ type exp =
   | Unary of unary_operator * exp
   | Binary of binary_operator * exp * exp
   | Assignment of exp * exp
+  | CompoundAssign of compound_operator * exp * exp
 [@@deriving show]
 
 type statement =

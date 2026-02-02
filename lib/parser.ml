@@ -41,7 +41,10 @@ module Private = struct
     | T.Pipe -> Some 27
     | T.LogicalAnd -> Some 10
     | T.LogicalOr -> Some 5
-    | T.EqualSign -> Some 1
+    | T.EqualSign | T.PlusEqual | T.HyphenEqual | T.StarEqual | T.SlashEqual
+    | T.PercentEqual | T.AmpersandEqual | T.PipeEqual | T.CaretEqual
+    | T.LeftShiftEqual | T.RightShiftEqual ->
+        Some 1
     | _ -> None
 
   let parse_int tokens =
@@ -81,6 +84,29 @@ module Private = struct
     | T.GreaterOrEqual -> Ast.GreaterOrEqual
     | other -> raise_error ~expected:(Name "a binary operator") ~actual:other
 
+  (* <comop> ::= "+=" | "-=" | "*=" | "/=" | "%=" | "&=" | "|=" | "^=" | "<<=" |
+     ">>=" *)
+  let parse_comop tokens =
+    match Tok_stream.take_token tokens with
+    | T.PlusEqual -> Ast.AddAssign
+    | T.HyphenEqual -> Ast.SubtractAssign
+    | T.StarEqual -> Ast.MultiplyAssign
+    | T.SlashEqual -> Ast.DivideAssign
+    | T.PercentEqual -> Ast.ModAssign
+    | T.AmpersandEqual -> Ast.BitAndAssign
+    | T.PipeEqual -> Ast.BitOrAssign
+    | T.CaretEqual -> Ast.BitXorAssign
+    | T.LeftShiftEqual -> Ast.ShiftLeftAssign
+    | T.RightShiftEqual -> Ast.ShiftRightAssign
+    | other -> raise_error ~expected:(Name "a compound operator") ~actual:other
+
+  let is_compound_assignment = function
+    | T.PlusEqual | T.HyphenEqual | T.StarEqual | T.SlashEqual | T.PercentEqual
+    | T.AmpersandEqual | T.PipeEqual | T.CaretEqual | T.LeftShiftEqual
+    | T.RightShiftEqual ->
+        true
+    | _ -> false
+
   (* <factor> ::= <int> | <identifier> | <unop> <factor> | "(" <exp> ")" *)
   let rec parse_factor tokens =
     match Tok_stream.peek tokens with
@@ -111,6 +137,10 @@ module Private = struct
               let _ = Tok_stream.take_token tokens in
               let right = parse_exp prec tokens in
               Ast.Assignment (left, right)
+            else if is_compound_assignment next then
+              let operator = parse_comop tokens in
+              let right = parse_exp prec tokens in
+              Ast.CompoundAssign (operator, left, right)
             else
               let operator = parse_binop tokens in
               let right = parse_exp (prec + 1) tokens in
