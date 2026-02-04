@@ -68,13 +68,25 @@ let rec print_exp ?(indent = 0) exp =
       print_indent indent;
       printf ")\n"
   | CompoundAssign (op, left, right) ->
-      (* 新增：复合赋值节点 *)
       let op_str = print_compound_operator op in
       printf "CompoundAssign(%s, \n" op_str;
       print_exp ~indent:(indent + 1) left;
       print_exp ~indent:(indent + 1) right;
       print_indent indent;
       printf ")\n"
+  | Conditional { condition; then_result; else_result } ->
+      printf "Conditional {\n";
+      print_indent (indent + 1);
+      printf "condition = \n";
+      print_exp ~indent:(indent + 2) condition;
+      print_indent (indent + 1);
+      printf "then_result = \n";
+      print_exp ~indent:(indent + 2) then_result;
+      print_indent (indent + 1);
+      printf "else_result = \n";
+      print_exp ~indent:(indent + 2) else_result;
+      print_indent indent;
+      printf "}\n"
 
 and print_statement ?(indent = 0) stmt =
   print_indent indent;
@@ -89,6 +101,23 @@ and print_statement ?(indent = 0) stmt =
       print_exp ~indent:(indent + 1) exp;
       print_indent indent;
       printf ")\n"
+  | If { condition; then_clause; else_clause } ->
+      printf "If {\n";
+      print_indent (indent + 1);
+      printf "condition = \n";
+      print_exp ~indent:(indent + 2) condition;
+      print_indent (indent + 1);
+      printf "then_clause = \n";
+      print_statement ~indent:(indent + 2) then_clause;
+      print_indent (indent + 1);
+      printf "else_clause = ";
+      (match else_clause with
+      | Some else_stmt ->
+          printf "\n";
+          print_statement ~indent:(indent + 2) else_stmt
+      | None -> printf "None\n");
+      print_indent indent;
+      printf "}\n"
   | Null -> printf "Null\n"
 
 and print_declaration ?(indent = 0) decl =
@@ -159,3 +188,8 @@ let rec print_exp_inline exp =
       sprintf "(%s %s %s)" (print_exp_inline left)
         (print_compound_operator op)
         (print_exp_inline right)
+  | Conditional { condition; then_result; else_result } ->
+      sprintf "(%s ? %s : %s)"
+        (print_exp_inline condition)
+        (print_exp_inline then_result)
+        (print_exp_inline else_result)

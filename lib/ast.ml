@@ -43,11 +43,17 @@ type exp =
   | Binary of binary_operator * exp * exp
   | Assignment of exp * exp
   | CompoundAssign of compound_operator * exp * exp
+  | Conditional of { condition : exp; then_result : exp; else_result : exp }
 [@@deriving show]
 
 type statement =
   | Return of exp
   | Expression of exp
+  | If of {
+      condition : exp;
+      then_clause : statement;
+      else_clause : statement option;
+    }
   | Null (* a single semicolon, means do nothing *)
 [@@deriving show]
 

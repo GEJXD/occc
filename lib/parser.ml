@@ -41,6 +41,7 @@ module Private = struct
     | T.Pipe -> Some 27
     | T.LogicalAnd -> Some 10
     | T.LogicalOr -> Some 5
+    | T.QuestionMark -> Some 3
     | T.EqualSign | T.PlusEqual | T.HyphenEqual | T.StarEqual | T.SlashEqual
     | T.PercentEqual | T.AmpersandEqual | T.PipeEqual | T.CaretEqual
     | T.LeftShiftEqual | T.RightShiftEqual ->
@@ -125,10 +126,18 @@ module Private = struct
         expr
     | other -> raise_error ~expected:(Name "a factor") ~actual:other
 
+  and parse_conditional_middle tokens =
+    let _ = expect T.QuestionMark tokens in
+    let exp = parse_exp 0 tokens in
+    let _ = expect T.Colon tokens in
+    exp
+
   and parse_exp min_prec tokens =
     let initial_factor = parse_factor tokens in
     let next_token = Tok_stream.peek tokens in
     let rec parse_exp_loop left next =
+      (* fuuuuuck!!!! fuuuuuuuuuuuck next is the function argument, not the
+         next_token. *)
       match get_precedence next with
       | Some prec when prec >= min_prec ->
           let result =
@@ -137,6 +146,11 @@ module Private = struct
               let _ = Tok_stream.take_token tokens in
               let right = parse_exp prec tokens in
               Ast.Assignment (left, right)
+            else if next = T.QuestionMark then
+              let middle = parse_conditional_middle tokens in
+              let right = parse_exp prec tokens in
+              Ast.Conditional
+                { condition = left; then_result = middle; else_result = right }
             else if is_compound_assignment next then
               let operator = parse_comop tokens in
               let right = parse_exp prec tokens in
@@ -151,7 +165,7 @@ module Private = struct
     in
     parse_exp_loop initial_factor next_token
 
-  let parse_statement tokens =
+  let rec parse_statement tokens =
     match Tok_stream.peek tokens with
     (* "return" <exp> ";" *)
     | T.KWReturn ->
@@ -163,6 +177,20 @@ module Private = struct
     | T.Semicolon ->
         let _ = Tok_stream.take_token tokens in
         Ast.Null
+    (* "if" "(" <exp> ")" <statement> [ "else" <statement> ] *)
+    | T.KWIf ->
+        let _ = Tok_stream.take_token tokens in
+        let _ = expect T.OpenParen tokens in
+        let condition = parse_exp 0 tokens in
+        let _ = expect T.CloseParen tokens in
+        let then_clause = parse_statement tokens in
+        let else_clause =
+          if Tok_stream.peek tokens = T.KWElse then
+            let _ = Tok_stream.take_token tokens in
+            Some (parse_statement tokens)
+          else None
+        in
+        Ast.If { condition; then_clause; else_clause }
     (* <exp> ";" *)
     | _ ->
         let exp = parse_exp 0 tokens in

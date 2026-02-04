@@ -55,22 +55,10 @@ let rec emit_tacky_for_exp = function
       (instr_lst, rhs_result)
   | Ast.Assignment _ -> failwith "Internal Error: bad lvalue"
   | Ast.CompoundAssign (op, Ast.Var v, rhs) ->
-    let rhs_instructions, rhs_result = emit_tacky_for_exp rhs in
-    let var_value = T.Var v in
-    let temp_result = T.Var (Unique_ids.make_temporary ()) in
-    let binary_op = convert_comop op in
-    let binary_instr = T.Binary { 
-      op = binary_op; 
-      src1 = var_value; 
-      src2 = rhs_result; 
-      dst = temp_result 
-    } in
-    let copy_instr = T.Copy { src = temp_result; dst = var_value } in
-    let instr_lst = 
-      rhs_instructions @ [ binary_instr; copy_instr ] 
-    in
-    (instr_lst, temp_result)
+      emit_compound_assignment_expression op v rhs
   | Ast.CompoundAssign _ -> failwith "Internal Error: bad lvalue"
+  | Ast.Conditional { condition; then_result; else_result } ->
+      emit_conditional_expression condition then_result else_result
 
 and emit_unary_expression op inner =
   let eval_inner, v = emit_tacky_for_exp inner in
@@ -132,16 +120,64 @@ and emit_or_expressiont e1 e2 =
   in
   (instr_lst, dst)
 
+and emit_compound_assignment_expression op v rhs =
+  let rhs_instructions, rhs_result = emit_tacky_for_exp rhs in
+  let var_value = T.Var v in
+  let temp_result = T.Var (Unique_ids.make_temporary ()) in
+  let binary_op = convert_comop op in
+  let binary_instr =
+    T.Binary
+      { op = binary_op; src1 = var_value; src2 = rhs_result; dst = temp_result }
+  in
+  let copy_instr = T.Copy { src = temp_result; dst = var_value } in
+  let instr_lst = rhs_instructions @ [ binary_instr; copy_instr ] in
+  (instr_lst, temp_result)
+
+and emit_conditional_expression condition then_result else_result =
+  let eval_cond, c = emit_tacky_for_exp condition in
+  let eval_v1, v1 = emit_tacky_for_exp then_result in
+  let eval_v2, v2 = emit_tacky_for_exp else_result in
+  let e2_label = Unique_ids.make_label "conditional_else" in
+  let end_label = Unique_ids.make_label "conditional_end" in
+  let dst = T.Var (Unique_ids.make_temporary ()) in
+  let instr_lst =
+    eval_cond
+    @ (T.JumpIfZero (c, e2_label) :: eval_v1)
+    @ T.Copy { src = v1; dst }
+      :: T.Jump end_label :: T.Label e2_label :: eval_v2
+    @ T.[ Copy { src = v2; dst }; Label end_label ]
+  in
+  (instr_lst, dst)
+
 (* return a instructions list. for now statement only have Return
    instruction. *)
-let emit_tacky_for_statement = function
+let rec emit_tacky_for_statement = function
   | Ast.Return exp ->
       let eval_exp, result = emit_tacky_for_exp exp in
       eval_exp @ [ T.Return result ]
   | Ast.Expression exp ->
       let eval_exp, _ = emit_tacky_for_exp exp in
       eval_exp
+  | Ast.If { condition; then_clause; else_clause } ->
+      emit_tacky_for_if_statement condition then_clause else_clause
   | Ast.Null -> []
+
+and emit_tacky_for_if_statement condition then_clause = function
+  | None ->
+      let eval_cond, c = emit_tacky_for_exp condition in
+      let end_label = Unique_ids.make_label "if_end" in
+      eval_cond
+      @ (T.JumpIfZero (c, end_label) :: emit_tacky_for_statement then_clause)
+      @ [ T.Label end_label ]
+  | Some else_clause ->
+      let eval_cond, c = emit_tacky_for_exp condition in
+      let end_label = Unique_ids.make_label "if_end" in
+      let else_label = Unique_ids.make_label "else" in
+      eval_cond
+      @ (T.JumpIfZero (c, else_label) :: emit_tacky_for_statement then_clause)
+      @ T.Jump end_label :: T.Label else_label
+        :: emit_tacky_for_statement else_clause
+      @ [ T.Label end_label ]
 
 let emit_tacky_for_block_item = function
   | Ast.S s -> emit_tacky_for_statement s
@@ -155,6 +191,6 @@ let emit_tacky_for_block_item = function
 let emit_tacky_for_function (Ast.Function { name; body }) =
   let body_instructions = List.concat_map emit_tacky_for_block_item body in
   let extra_return = T.(Return (Constant 0)) in
-  Tacky.Function { name; body = body_instructions @ [ extra_return ] }
+  T.Function { name; body = body_instructions @ [ extra_return ] }
 
 let tacky_gen (Ast.Program fn_def) = T.Program (emit_tacky_for_function fn_def)

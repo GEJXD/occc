@@ -53,5 +53,10 @@ type t =
   | CaretEqual (* ^= *)
   | LeftShiftEqual (* <<= *)
   | RightShiftEqual (* >>= *)
+  (* control flow *)
+  | KWIf
+  | KWElse
+  | QuestionMark (* ? *)
+  | Colon (* : *)
 [@@deriving show]
 (* ppx extension, construct a t.pp *)

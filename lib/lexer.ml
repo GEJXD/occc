@@ -23,6 +23,8 @@ let convert_identifier = function
   | "int" -> T.KWInt
   | "return" -> T.KWReturn
   | "void" -> T.KWVoid
+  | "if" -> T.KWIf
+  | "else" -> T.KWElse
   | other -> T.Identifier other
 
 (* convert string to int *)
@@ -77,6 +79,8 @@ let match_rules =
     generate_rule {_|\^=|_} (convert_literal T.CaretEqual);
     generate_rule "<<=" (convert_literal T.LeftShiftEqual);
     generate_rule ">>=" (convert_literal T.RightShiftEqual);
+    generate_rule {_|\?|_} (convert_literal T.QuestionMark);
+    generate_rule ":" (convert_literal T.Colon);
   ]
 
 let find_match s rule =
@@ -137,6 +141,10 @@ let token_to_string = function
   | T.CaretEqual -> "^="
   | T.LeftShiftEqual -> "<<="
   | T.RightShiftEqual -> ">>="
+  | T.KWIf -> "if"
+  | T.KWElse -> "else"
+  | T.QuestionMark -> "?"
+  | T.Colon -> ":"
 
 let print_matches matches =
   List.iter
