@@ -160,6 +160,8 @@ let rec emit_tacky_for_statement = function
       eval_exp
   | Ast.If { condition; then_clause; else_clause } ->
       emit_tacky_for_if_statement condition then_clause else_clause
+  | Ast.Compound (Block items) ->
+      List.concat_map emit_tacky_for_block_item items
   | Ast.Null -> []
 
 and emit_tacky_for_if_statement condition then_clause = function
@@ -179,7 +181,7 @@ and emit_tacky_for_if_statement condition then_clause = function
         :: emit_tacky_for_statement else_clause
       @ [ T.Label end_label ]
 
-let emit_tacky_for_block_item = function
+and emit_tacky_for_block_item = function
   | Ast.S s -> emit_tacky_for_statement s
   | Ast.D (Declaration { name; init = Some e }) ->
       let eval_assignment, _ =
@@ -188,8 +190,10 @@ let emit_tacky_for_block_item = function
       eval_assignment
   | Ast.D (Declaration { init = None; _ }) -> []
 
-let emit_tacky_for_function (Ast.Function { name; body }) =
-  let body_instructions = List.concat_map emit_tacky_for_block_item body in
+let emit_tacky_for_function (Ast.Function { name; body = Block block_items }) =
+  let body_instructions =
+    List.concat_map emit_tacky_for_block_item block_items
+  in
   let extra_return = T.(Return (Constant 0)) in
   T.Function { name; body = body_instructions @ [ extra_return ] }
 

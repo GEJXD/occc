@@ -25,6 +25,7 @@ module Private = struct
     if actual <> expected then raise_error ~expected:(Tok expected) ~actual
     else ()
 
+  (* <identifier> ::= ? An identifier token ? *)
   let parse_id tokens =
     match Tok_stream.take_token tokens with
     | T.Identifier x -> x
@@ -141,21 +142,23 @@ module Private = struct
       match get_precedence next with
       | Some prec when prec >= min_prec ->
           let result =
+            (* right association *)
             if next = T.EqualSign then
-              (* let _ = expect T.EqualSign tokens in *)
               let _ = Tok_stream.take_token tokens in
               let right = parse_exp prec tokens in
-              Ast.Assignment (left, right)
+              Ast.Assignment (left, right) (* right association *)
             else if next = T.QuestionMark then
               let middle = parse_conditional_middle tokens in
               let right = parse_exp prec tokens in
               Ast.Conditional
                 { condition = left; then_result = middle; else_result = right }
+              (* right association *)
             else if is_compound_assignment next then
               let operator = parse_comop tokens in
               let right = parse_exp prec tokens in
               Ast.CompoundAssign (operator, left, right)
-            else
+            (* left association *)
+              else
               let operator = parse_binop tokens in
               let right = parse_exp (prec + 1) tokens in
               Ast.Binary (operator, left, right)
@@ -165,6 +168,28 @@ module Private = struct
     in
     parse_exp_loop initial_factor next_token
 
+  let parse_declaration tokens =
+    let _ = expect T.KWInt tokens in
+    let var_name = parse_id tokens in
+    let init =
+      match Tok_stream.take_token tokens with
+      | T.Semicolon -> None
+      | T.EqualSign ->
+          let init_exp = parse_exp 0 tokens in
+          let _ = expect T.Semicolon tokens in
+          Some init_exp
+      | other ->
+          raise_error ~expected:(Name "An initializer or semicolon")
+            ~actual:other
+    in
+    Ast.Declaration { name = var_name; init }
+
+  (* <statement> ::= "return" <exp> ";"
+   *               | "if" "(" <exp> ")" <statement> [ "else" <statement> ]
+   *               | <block>
+   *               | <exp> ";"
+   *               | ";"
+   *)
   let rec parse_statement tokens =
     match Tok_stream.peek tokens with
     (* "return" <exp> ";" *)
@@ -191,38 +216,20 @@ module Private = struct
           else None
         in
         Ast.If { condition; then_clause; else_clause }
+    (* <block> *)
+    | T.OpenBrace -> Ast.Compound (parse_block tokens)
     (* <exp> ";" *)
     | _ ->
         let exp = parse_exp 0 tokens in
         let _ = expect T.Semicolon tokens in
         Ast.Expression exp
 
-  let parse_declaration tokens =
-    let _ = expect T.KWInt tokens in
-    let var_name = parse_id tokens in
-    let init =
-      match Tok_stream.take_token tokens with
-      | T.Semicolon -> None
-      | T.EqualSign ->
-          let init_exp = parse_exp 0 tokens in
-          let _ = expect T.Semicolon tokens in
-          Some init_exp
-      | other ->
-          raise_error ~expected:(Name "An initializer or semicolon")
-            ~actual:other
-    in
-    Ast.Declaration { name = var_name; init }
-
-  let parse_block_item tokens =
+  and parse_block_item tokens =
     if Tok_stream.peek tokens = T.KWInt then Ast.D (parse_declaration tokens)
     else Ast.S (parse_statement tokens)
 
-  let parse_function_definition tokens =
-    let _ = expect T.KWInt tokens in
-    let fun_name = parse_id tokens in
-    let _ = expect T.OpenParen tokens in
-    let _ = expect T.KWVoid tokens in
-    let _ = expect T.CloseParen tokens in
+  (* "{" { <block_item } "}" *)
+  and parse_block tokens =
     let _ = expect T.OpenBrace tokens in
     let rec parse_block_item_loop () =
       if Tok_stream.peek tokens = T.CloseBrace then []
@@ -230,10 +237,21 @@ module Private = struct
         let next_block_item = parse_block_item tokens in
         next_block_item :: parse_block_item_loop ()
     in
-    let body = parse_block_item_loop () in
+    let block = parse_block_item_loop () in
     let _ = expect T.CloseBrace tokens in
+    Ast.Block block
+
+  (* <function> ::= "int" <identifier> "(" "void" ")" <block> *)
+  let parse_function_definition tokens =
+    let _ = expect T.KWInt tokens in
+    let fun_name = parse_id tokens in
+    let _ = expect T.OpenParen tokens in
+    let _ = expect T.KWVoid tokens in
+    let _ = expect T.CloseParen tokens in
+    let body = parse_block tokens in
     Ast.Function { name = fun_name; body }
 
+  (* <program> ::= <function> *)
   let parse_program tokens =
     let fun_def = parse_function_definition tokens in
     if Tok_stream.is_empty tokens then Ast.Program fun_def

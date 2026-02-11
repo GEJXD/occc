@@ -118,6 +118,11 @@ and print_statement ?(indent = 0) stmt =
       | None -> printf "None\n");
       print_indent indent;
       printf "}\n"
+  | Compound block ->
+      printf "Compound(\n";
+      print_block ~indent:(indent + 1) block;
+      print_indent indent;
+      printf ")\n"
   | Null -> printf "Null\n"
 
 and print_declaration ?(indent = 0) decl =
@@ -151,6 +156,13 @@ and print_block_item ?(indent = 0) item =
       print_indent indent;
       printf ")\n"
 
+and print_block ?(indent = 0) (Block items) =
+  print_indent indent;
+  printf "Block([\n";
+  List.iter (fun item -> print_block_item ~indent:(indent + 1) item) items;
+  print_indent indent;
+  printf "])\n"
+
 and print_function_definition ?(indent = 0) func_def =
   print_indent indent;
   match func_def with
@@ -159,10 +171,8 @@ and print_function_definition ?(indent = 0) func_def =
       print_indent (indent + 1);
       printf "name = \"%s\";\n" name;
       print_indent (indent + 1);
-      printf "body = [\n";
-      List.iter (fun item -> print_block_item ~indent:(indent + 2) item) body;
-      print_indent (indent + 1);
-      printf "];\n";
+      printf "body = \n";
+      print_block ~indent:(indent + 2) body;
       print_indent indent;
       printf "}\n"
 

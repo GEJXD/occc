@@ -46,6 +46,9 @@ type exp =
   | Conditional of { condition : exp; then_result : exp; else_result : exp }
 [@@deriving show]
 
+type declaration = Declaration of { name : string; init : exp option }
+[@@deriving show]
+
 type statement =
   | Return of exp
   | Expression of exp
@@ -54,16 +57,14 @@ type statement =
       then_clause : statement;
       else_clause : statement option;
     }
+  | Compound of block
   | Null (* a single semicolon, means do nothing *)
 [@@deriving show]
 
-type declaration = Declaration of { name : string; init : exp option }
-[@@deriving show]
+and block_item = S of statement | D of declaration [@@deriving show]
+and block = Block of block_item list
 
-type block_item = S of statement | D of declaration [@@deriving show]
-
-type function_definition =
-  | Function of { name : string; body : block_item list }
+type function_definition = Function of { name : string; body : block }
 [@@deriving show]
 
 type t = Program of function_definition [@@deriving show]
