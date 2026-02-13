@@ -2,6 +2,9 @@ module T = struct
   include Tacky
 end
 
+let break_label id = "break." ^ id
+let continue_label id = "continue." ^ id
+
 let convert_op = function
   | Ast.Complement -> T.Complement
   | Ast.Negate -> T.Negate
@@ -162,7 +165,29 @@ let rec emit_tacky_for_statement = function
       emit_tacky_for_if_statement condition then_clause else_clause
   | Ast.Compound (Block items) ->
       List.concat_map emit_tacky_for_block_item items
+  (* breaks and continues in same loop are have same label so break_label will
+     have same label in both Ast.Break and Ast.DoWhile *)
+  | Ast.Break id -> [ T.Jump (break_label id) ]
+  | Ast.Continue id -> [ T.Jump (continue_label id) ]
+  | Ast.DoWhile { body; condition; id } ->
+      emit_tacky_for_do_loop body condition id
+  | Ast.While { condition; body; id } ->
+      emit_tacky_for_while_loop condition body id
+  | Ast.For { init; condition; post; body; id } ->
+      emit_tacky_for_for_loop init condition post body id
   | Ast.Null -> []
+
+and emit_tacky_for_block_item = function
+  | Ast.S s -> emit_tacky_for_statement s
+  | Ast.D d -> emit_declaration d
+
+and emit_declaration = function
+  | Ast.Declaration { name; init = Some e } ->
+      let eval_assignment, _assign_result =
+        emit_tacky_for_exp (Ast.Assignment (Var name, e))
+      in
+      eval_assignment
+  | Ast.Declaration { init = None; _ } -> []
 
 and emit_tacky_for_if_statement condition then_clause = function
   | None ->
@@ -181,14 +206,51 @@ and emit_tacky_for_if_statement condition then_clause = function
         :: emit_tacky_for_statement else_clause
       @ [ T.Label end_label ]
 
-and emit_tacky_for_block_item = function
-  | Ast.S s -> emit_tacky_for_statement s
-  | Ast.D (Declaration { name; init = Some e }) ->
-      let eval_assignment, _ =
-        emit_tacky_for_exp (Ast.Assignment (Var name, e))
-      in
-      eval_assignment
-  | Ast.D (Declaration { init = None; _ }) -> []
+and emit_tacky_for_do_loop body condition id =
+  let start_label = Unique_ids.make_label "do_loop_start" in
+  let cont_label = continue_label id in
+  let br_label = break_label id in
+  let eval_condition, c = emit_tacky_for_exp condition in
+  (T.Label start_label :: emit_tacky_for_statement body)
+  @ (T.Label cont_label :: eval_condition)
+  @ [ T.JumpIfNotZero (c, start_label); T.Label br_label ]
+
+and emit_tacky_for_while_loop condition body id =
+  let cont_label = continue_label id in
+  let br_label = break_label id in
+  let eval_condition, c = emit_tacky_for_exp condition in
+  (T.Label cont_label :: eval_condition)
+  @ (T.JumpIfZero (c, br_label) :: emit_tacky_for_statement body)
+  @ [ T.Jump cont_label; T.Label br_label ]
+
+and emit_tacky_for_for_loop init condition post body id =
+  let start_label = Unique_ids.make_label "for_start" in
+  let cont_label = continue_label id in
+  let br_label = break_label id in
+  let for_init_instructions =
+    match init with
+    | Ast.InitDecl d -> emit_declaration d
+    | Ast.InitExp e -> begin
+        match Option.map emit_tacky_for_exp e with
+        | Some (instrs, _) -> instrs
+        | None -> []
+      end
+  in
+  let test_condition =
+    match Option.map emit_tacky_for_exp condition with
+    | Some (instrs, v) -> instrs @ [ T.JumpIfZero (v, br_label) ]
+    | None -> []
+  in
+  let post_instructions =
+    match Option.map emit_tacky_for_exp post with
+    | Some (instrs, _) -> instrs
+    | None -> []
+  in
+  for_init_instructions
+  @ (T.Label start_label :: test_condition)
+  @ emit_tacky_for_statement body
+  @ (T.Label cont_label :: post_instructions)
+  @ [ T.Jump start_label; T.Label br_label ]
 
 let emit_tacky_for_function (Ast.Function { name; body = Block block_items }) =
   let body_instructions =
