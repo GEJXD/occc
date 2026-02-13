@@ -168,6 +168,15 @@ module Private = struct
     in
     parse_exp_loop initial_factor next_token
 
+  let parse_optional_exp delimit tokens =
+    if Tok_stream.peek tokens = delimit then
+      let _ = Tok_stream.take_token tokens in
+      None
+    else
+      let e = parse_exp 0 tokens in
+      let _ = expect delimit tokens in
+      Some e
+
   let parse_declaration tokens =
     let _ = expect T.KWInt tokens in
     let var_name = parse_id tokens in
@@ -184,9 +193,21 @@ module Private = struct
     in
     Ast.Declaration { name = var_name; init }
 
+  let parse_for_init tokens =
+    if Tok_stream.peek tokens = T.KWInt then
+      Ast.InitDecl (parse_declaration tokens)
+    else
+      let opt_e = parse_optional_exp T.Semicolon tokens in
+      Ast.InitExp opt_e
+
   (* <statement> ::= "return" <exp> ";"
    *               | "if" "(" <exp> ")" <statement> [ "else" <statement> ]
    *               | <block>
+   *               | "break" ";"
+   *               | "continue" ";"
+   *               | "while" "(" <exp> ")" <statement>
+   *               | "do" <statement> "while" "(" <exp> ")" ";"
+   *               | "for" "(" <for-init> [ <exp> ] ";" [ <exp> ] ")" <statement>
    *               | <exp> ";"
    *               | ";"
    *)
@@ -218,6 +239,43 @@ module Private = struct
         Ast.If { condition; then_clause; else_clause }
     (* <block> *)
     | T.OpenBrace -> Ast.Compound (parse_block tokens)
+    (* parser only generate AST node, not given label for loops; the label will
+       be given at semantic analysis phres *)
+    | T.KWBreak ->
+        let _ = Tok_stream.take_token tokens in
+        let _ = expect T.Semicolon tokens in
+        Ast.Break ""
+    | T.KWContinue ->
+        let _ = Tok_stream.take_token tokens in
+        let _ = expect T.Semicolon tokens in
+        Ast.Continue ""
+    (* "while" "(" <exp> ")" <statement> *)
+    | T.KWWhile ->
+        let _ = Tok_stream.take_token tokens in
+        let _ = expect T.OpenParen tokens in
+        let condition = parse_exp 0 tokens in
+        let _ = expect T.CloseParen tokens in
+        let body = parse_statement tokens in
+        Ast.While { condition; body; id = "" }
+    (* "do" <statement> "while" "(" <exp> ")" ";" *)
+    | T.KWDo ->
+        let _ = Tok_stream.take_token tokens in
+        let body = parse_statement tokens in
+        let _ = expect T.KWWhile tokens in
+        let _ = expect T.OpenParen tokens in
+        let condition = parse_exp 0 tokens in
+        let _ = expect T.CloseParen tokens in
+        let _ = expect T.Semicolon tokens in
+        Ast.DoWhile { body; condition; id = "" }
+    (* "for" "(" <for_init> [ <exp> ] ";" [ <exp> ] ")" <statement> *)
+    | T.KWFor ->
+        let _ = Tok_stream.take_token tokens in
+        let _ = expect T.OpenParen tokens in
+        let init = parse_for_init tokens in
+        let condition = parse_optional_exp T.Semicolon tokens in
+        let post = parse_optional_exp T.CloseParen tokens in
+        let body = parse_statement tokens in
+        Ast.For { init; condition; post; body; id = "" }
     (* <exp> ";" *)
     | _ ->
         let exp = parse_exp 0 tokens in

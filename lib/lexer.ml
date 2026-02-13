@@ -25,6 +25,11 @@ let convert_identifier = function
   | "void" -> T.KWVoid
   | "if" -> T.KWIf
   | "else" -> T.KWElse
+  | "do" -> T.KWDo
+  | "while" -> T.KWWhile
+  | "for" -> T.KWFor
+  | "break" -> T.KWBreak
+  | "continue" -> T.KWContinue
   | other -> T.Identifier other
 
 (* convert string to int *)
@@ -145,6 +150,11 @@ let token_to_string = function
   | T.KWElse -> "else"
   | T.QuestionMark -> "?"
   | T.Colon -> ":"
+  | T.KWDo -> "do"
+  | T.KWWhile -> "while"
+  | T.KWFor -> "for"
+  | T.KWBreak -> "break"
+  | T.KWContinue -> "continue"
 
 let print_matches matches =
   List.iter

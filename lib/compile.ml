@@ -6,10 +6,11 @@ let compile stage src_file =
     let ast = Parser.parser tokens in
     if stage = Settings.Parse then ()
     else
-      let validate_ast = Resolve.resolve ast in
+      let resolve_variable_ast = Resolve.resolve ast in
+      let loop_labeling_ast = Label_loops.label_loops resolve_variable_ast in
       if stage = Settings.Validate then ()
       else
-        let tacky = Tacky_gen.tacky_gen validate_ast in
+        let tacky = Tacky_gen.tacky_gen loop_labeling_ast in
         Tacky_print.debug_print_tacky src_file tacky;
         if stage = Settings.Tacky then ()
         else

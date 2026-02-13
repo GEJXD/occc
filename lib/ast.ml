@@ -49,6 +49,9 @@ type exp =
 type declaration = Declaration of { name : string; init : exp option }
 [@@deriving show]
 
+type for_init = InitDecl of declaration | InitExp of exp option
+[@@deriving show]
+
 type statement =
   | Return of exp
   | Expression of exp
@@ -58,11 +61,22 @@ type statement =
       else_clause : statement option;
     }
   | Compound of block
+  | Break of string
+  | Continue of string
+  | While of { condition : exp; body : statement; id : string }
+  | DoWhile of { body : statement; condition : exp; id : string }
+  | For of {
+      init : for_init;
+      condition : exp option;
+      post : exp option;
+      body : statement;
+      id : string;
+    }
   | Null (* a single semicolon, means do nothing *)
 [@@deriving show]
 
 and block_item = S of statement | D of declaration [@@deriving show]
-and block = Block of block_item list
+and block = Block of block_item list [@@deriving show]
 
 type function_definition = Function of { name : string; body : block }
 [@@deriving show]

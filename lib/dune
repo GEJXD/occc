@@ -29,7 +29,8 @@
   unique_ids
   replace_pseudos
   instruction_fixup
-  resolve)
+  resolve
+  label_loops)
  (libraries re camlp-streams)
  (preprocess
   (pps ppx_deriving.show))

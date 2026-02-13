@@ -58,5 +58,11 @@ type t =
   | KWElse
   | QuestionMark (* ? *)
   | Colon (* : *)
+  (* Loops *)
+  | KWDo
+  | KWWhile
+  | KWFor
+  | KWBreak
+  | KWContinue
 [@@deriving show]
 (* ppx extension, construct a t.pp *)
