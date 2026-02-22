@@ -38,10 +38,10 @@ let compile stage preprocess_src =
 let assemble_and_link ?(cleanup = true) ?(link = true) src =
   let link_option = if link then [] else [ "-c" ] in
   let assembly_file = replace_extension src ".s" in
-  let output_file = 
-    if link then Filename.chop_extension src
-    else replace_extension src ".o" in
-  let _ = 
+  let output_file =
+    if link then Filename.chop_extension src else replace_extension src ".o"
+  in
+  let _ =
     run_command "gcc" (link_option @ [ assembly_file; "-o"; output_file ])
   in
   (* cleanup .s files *)

@@ -109,11 +109,24 @@ module Private = struct
         true
     | _ -> false
 
-  (* <factor> ::= <int> | <identifier> | <unop> <factor> | "(" <exp> ")" *)
+  (* <factor> ::= | <int> | <identifier> | <unop> <factor> | | "(" <exp> ")" |
+     <identifier> "(" [ <argument-list> ] ")"*)
   let rec parse_factor tokens =
     match Tok_stream.peek tokens with
     | T.Constant _ -> parse_int tokens
-    | T.Identifier _ -> Ast.Var (parse_id tokens)
+    | T.Identifier _ ->
+        let id = parse_id tokens in
+        (* a function call *)
+        if Tok_stream.peek tokens = T.OpenParen then
+          let _ = Tok_stream.take_token tokens in
+          let args =
+            (* have no argument *)
+            if Tok_stream.peek tokens = T.CloseParen then []
+            else parse_argument_list tokens
+          in
+          let _ = expect T.CloseParen tokens in
+          Ast.FunCall { f = id; args }
+        else Ast.Var id
     (* Unary expressions *)
     | T.Tilde | T.Hyphen | T.Bang ->
         let opera = parse_unop tokens in
@@ -127,6 +140,13 @@ module Private = struct
         expr
     | other -> raise_error ~expected:(Name "a factor") ~actual:other
 
+  and parse_argument_list tokens =
+    let arg = parse_exp 0 tokens in
+    if Tok_stream.peek tokens = T.Comma then
+      let _ = Tok_stream.take_token tokens in
+      arg :: parse_argument_list tokens
+    else [ arg ]
+
   and parse_conditional_middle tokens =
     let _ = expect T.QuestionMark tokens in
     let exp = parse_exp 0 tokens in
@@ -137,8 +157,6 @@ module Private = struct
     let initial_factor = parse_factor tokens in
     let next_token = Tok_stream.peek tokens in
     let rec parse_exp_loop left next =
-      (* fuuuuuck!!!! fuuuuuuuuuuuck next is the function argument, not the
-         next_token. *)
       match get_precedence next with
       | Some prec when prec >= min_prec ->
           let result =
@@ -177,7 +195,8 @@ module Private = struct
       let _ = expect delimit tokens in
       Some e
 
-  let parse_declaration tokens =
+  (* <variable_declaration> ::= "int" <identifier> [ "=" <exp> ] ";" *)
+  let parse_variable_declaration tokens =
     let _ = expect T.KWInt tokens in
     let var_name = parse_id tokens in
     let init =
@@ -191,11 +210,53 @@ module Private = struct
           raise_error ~expected:(Name "An initializer or semicolon")
             ~actual:other
     in
-    Ast.Declaration { name = var_name; init }
+    Ast.{ name = var_name; init }
 
-  let parse_for_init tokens =
+  (* <param-list> ::= "void" | "int" <identifier> {"," "int" <identifier> } *)
+  let parse_param_list tokens =
+    if Tok_stream.peek tokens = T.KWVoid then
+      let _ = Tok_stream.take_token tokens in
+      []
+    else
+      let rec param_loop () =
+        let _ = expect T.KWInt tokens in
+        let next_param = parse_id tokens in
+        if Tok_stream.peek tokens = T.Comma then
+          let _ = Tok_stream.take_token tokens in
+          next_param :: param_loop ()
+        else [ next_param ]
+      in
+      param_loop ()
+
+  (* function-declaration> ::= "int" <identifier> "(" <param-list> ")" ( <block>
+     | ";" ) *)
+  let rec parse_function_declaration tokens =
+    let _ = expect T.KWInt tokens in
+    let fun_name = parse_id tokens in
+    let _ = expect T.OpenParen tokens in
+    let params = parse_param_list tokens in
+    let _ = expect T.CloseParen tokens in
+    let body =
+      match Tok_stream.peek tokens with
+      | T.Semicolon ->
+          let _ = Tok_stream.take_token tokens in
+          None
+      | _ -> Some (parse_block tokens)
+    in
+    Ast.{ name = fun_name; params; body }
+
+  (* <declaration> ::= <variable_declaration> | <function_declaration> *)
+  and parse_declaration tokens =
+    match Tok_stream.npeek 3 tokens with
+    (* <function_declaration> ::= "int" <identifier> "(" *)
+    | [ T.KWInt; T.Identifier _; T.OpenParen ] ->
+        Ast.FunDecl (parse_function_declaration tokens)
+    (* <variable_declaration> ::= "int" <identifier> ("=" | ";") *)
+    | _ -> Ast.VarDecl (parse_variable_declaration tokens)
+
+  and parse_for_init tokens =
     if Tok_stream.peek tokens = T.KWInt then
-      Ast.InitDecl (parse_declaration tokens)
+      Ast.InitDecl (parse_variable_declaration tokens)
     else
       let opt_e = parse_optional_exp T.Semicolon tokens in
       Ast.InitExp opt_e
@@ -211,7 +272,7 @@ module Private = struct
    *               | <exp> ";"
    *               | ";"
    *)
-  let rec parse_statement tokens =
+  and parse_statement tokens =
     match Tok_stream.peek tokens with
     (* "return" <exp> ";" *)
     | T.KWReturn ->
@@ -286,7 +347,7 @@ module Private = struct
     if Tok_stream.peek tokens = T.KWInt then Ast.D (parse_declaration tokens)
     else Ast.S (parse_statement tokens)
 
-  (* "{" { <block_item } "}" *)
+  (* <block> ::= "{" { <block_item } "}" *)
   and parse_block tokens =
     let _ = expect T.OpenBrace tokens in
     let rec parse_block_item_loop () =
@@ -299,21 +360,16 @@ module Private = struct
     let _ = expect T.CloseBrace tokens in
     Ast.Block block
 
-  (* <function> ::= "int" <identifier> "(" "void" ")" <block> *)
-  let parse_function_definition tokens =
-    let _ = expect T.KWInt tokens in
-    let fun_name = parse_id tokens in
-    let _ = expect T.OpenParen tokens in
-    let _ = expect T.KWVoid tokens in
-    let _ = expect T.CloseParen tokens in
-    let body = parse_block tokens in
-    Ast.Function { name = fun_name; body }
-
-  (* <program> ::= <function> *)
+  (* <program> ::= { <function-declaration> } *)
   let parse_program tokens =
-    let fun_def = parse_function_definition tokens in
-    if Tok_stream.is_empty tokens then Ast.Program fun_def
-    else raise (ParserError "Unexpected tokens after function definition")
+    let rec parse_decl_loop () =
+      if Tok_stream.is_empty tokens then []
+      else
+        let next_decl = parse_function_declaration tokens in
+        next_decl :: parse_decl_loop ()
+    in
+    let fun_decls = parse_decl_loop () in
+    Ast.Program fun_decls
 end
 
 let parser tokens =

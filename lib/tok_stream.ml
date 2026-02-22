@@ -17,4 +17,5 @@ let peek tokens =
   | Some token -> token
   | None -> raise End_of_stream
 
+let npeek = Stream.npeek
 let of_list = Stream.of_list

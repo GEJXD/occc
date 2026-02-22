@@ -6,8 +6,12 @@ let compile stage src_file =
     let ast = Parser.parser tokens in
     if stage = Settings.Parse then ()
     else
-      let resolve_variable_ast = Resolve.resolve ast in
-      let loop_labeling_ast = Label_loops.label_loops resolve_variable_ast in
+      (* resolve identifiers *)
+      let resolved_variable_ast = Resolve.resolve ast in
+      (* resolve loops and break/continue statements *)
+      let loop_labeling_ast = Label_loops.label_loops resolved_variable_ast in
+      (* typecheck definitions and functioncalls with correct arguments *)
+      let _ = Typecheck.typecheck loop_labeling_ast in
       if stage = Settings.Validate then ()
       else
         let tacky = Tacky_gen.tacky_gen loop_labeling_ast in
@@ -21,9 +25,9 @@ let compile stage src_file =
              in
              Emit.emit prealloc_filename asm_ast);
           (* replace pseudoregisters with Stack operands *)
-          let asm_ast1, stack_size = Replace_pseudos.replace_pseudos asm_ast in
+          let asm_ast1 = Replace_pseudos.replace_pseudos asm_ast in
           (* fix up instructions *)
-          let asm_ast2 = Instruction_fixup.fixup_program stack_size asm_ast1 in
+          let asm_ast2 = Instruction_fixup.fixup_program asm_ast1 in
           if stage = Settings.Codegen then ()
           else
             let asm_filename = Filename.chop_extension src_file ^ ".s" in

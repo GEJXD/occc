@@ -30,7 +30,11 @@
   replace_pseudos
   instruction_fixup
   resolve
-  label_loops)
+  label_loops
+  typecheck
+  types
+  symbols
+  rounding)
  (libraries re camlp-streams)
  (preprocess
   (pps ppx_deriving.show))

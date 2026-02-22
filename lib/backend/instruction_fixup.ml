@@ -1,6 +1,7 @@
 open Assembly
 
 let fixup_instruction = function
+  (* MOV instructions can not have two memory operand in same time. *)
   | Mov ((Stack _ as src), (Stack _ as dst)) ->
       [ Mov (src, Reg R10); Mov (Reg R10, dst) ]
   | Idiv (Imm i) -> [ Mov (Imm i, Reg R10); Idiv (Reg R10) ]
@@ -31,5 +32,16 @@ let fixup_function last_stack_slot (Function { name; instructions }) =
         :: List.concat_map fixup_instruction instructions;
     }
 
-let fixup_program last_stack_slot (Program func_def) =
-  Program (fixup_function last_stack_slot func_def)
+let fixup_function (Function { name; instructions }) =
+  let stack_bytes = -(Symbols.get name).stack_frame_size in
+  Function
+    {
+      name;
+      instructions =
+        AllocateStack (Rounding.round_away_from_zero 16 stack_bytes)
+        :: List.concat_map fixup_instruction instructions;
+    }
+
+let fixup_program (Program fn_defs) =
+  let fixed_fn_defs = List.map fixup_function fn_defs in
+  Program fixed_fn_defs

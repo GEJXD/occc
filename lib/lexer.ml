@@ -86,6 +86,7 @@ let match_rules =
     generate_rule ">>=" (convert_literal T.RightShiftEqual);
     generate_rule {_|\?|_} (convert_literal T.QuestionMark);
     generate_rule ":" (convert_literal T.Colon);
+    generate_rule "," (convert_literal T.Comma);
   ]
 
 let find_match s rule =
@@ -155,6 +156,7 @@ let token_to_string = function
   | T.KWFor -> "for"
   | T.KWBreak -> "break"
   | T.KWContinue -> "continue"
+  | T.Comma -> ","
 
 let print_matches matches =
   List.iter

@@ -64,5 +64,7 @@ type t =
   | KWFor
   | KWBreak
   | KWContinue
+  (* function parameters *)
+  | Comma (* , *)
 [@@deriving show]
 (* ppx extension, construct a t.pp *)

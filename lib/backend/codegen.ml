@@ -1,3 +1,5 @@
+let param_passing_regs = Assembly.[ DI; SI; DX; CX; R8; R9 ]
+
 let convert_val = function
   | Tacky.Constant c -> Assembly.Imm c
   | Tacky.Var id -> Assembly.Pseudo id
@@ -30,6 +32,42 @@ let convert_cond_code = function
   | Tacky.GreaterOrEqual -> Assembly.GE
   | Tacky.GreaterThan -> Assembly.G
   | _ -> failwith "Interal error: not a condition op"
+
+let convert_function_call f args dst =
+  let reg_args, stack_args = Utils.ListUtil.take_drop 6 args in
+  let stack_padding = if List.length stack_args mod 2 = 0 then 0 else 8 in
+  let padding_stack_instructions =
+    if stack_padding = 0 then [] else [ Assembly.AllocateStack stack_padding ]
+  in
+  (* pass args in registers *)
+  let pass_reg_args idx arg =
+    let reg = List.nth param_passing_regs idx in
+    let assembly_arg = convert_val arg in
+    Assembly.Mov (assembly_arg, Reg reg)
+  in
+  let prepare_args_to_regs =
+    padding_stack_instructions @ List.mapi pass_reg_args reg_args
+  in
+  (* pass args on stack *)
+  let pass_stack_arg arg =
+    let assembly_arg = convert_val arg in
+    match assembly_arg with
+    | Assembly.Imm _ | Reg _ -> [ Assembly.Push assembly_arg ]
+    | _ -> Assembly.[ Mov (assembly_arg, Reg AX); Push (Reg AX) ]
+  in
+  let prepare_args_to_stack =
+    prepare_args_to_regs @ List.concat (List.rev_map pass_stack_arg stack_args)
+  in
+  let function_call = prepare_args_to_stack @ [ Assembly.Call f ] in
+  let bytes_to_remove = (8 * List.length stack_args) + stack_padding in
+  let dealloc_stack =
+    if bytes_to_remove = 0 then []
+    else [ Assembly.DeallocateStack bytes_to_remove ]
+  in
+  let instructions = function_call @ dealloc_stack in
+  (* mov return value to dst *)
+  let assembly_dst = convert_val dst in
+  instructions @ [ Mov (Reg AX, assembly_dst) ]
 
 let convert_instruction = function
   | Tacky.Copy { src; dst } ->
@@ -104,10 +142,27 @@ let convert_instruction = function
       let asm_cond_val = convert_val cond in
       Assembly.[ Cmp (Imm 0, asm_cond_val); JmpCC (NE, target) ]
   | Tacky.Label label -> Assembly.[ Label label ]
+  | Tacky.FunCall { f; args; dst } -> convert_function_call f args dst
 
-let convert_function (Tacky.Function { name; body }) =
-  let instructions = List.concat_map convert_instruction body in
+(* copy params to stack *)
+let pass_params params =
+  let reg_params, stack_params = Utils.ListUtil.take_drop 6 params in
+  let pass_in_register idx param =
+    let reg = List.nth param_passing_regs idx in
+    Assembly.Mov (Reg reg, Pseudo param)
+  in
+  let pass_on_stack idx param =
+    let stk = Assembly.Stack (16 + (8 * idx)) in
+    Assembly.Mov (stk, Pseudo param)
+  in
+  List.mapi pass_in_register reg_params @ List.mapi pass_on_stack stack_params
+
+let convert_function (Tacky.Function { name; params; body }) =
+  let instructions =
+    pass_params params @ List.concat_map convert_instruction body
+  in
   Assembly.Function { name; instructions }
 
-let codegen (Tacky.Program func_def) =
-  Assembly.Program (convert_function func_def)
+let codegen (Tacky.Program fn_defs) =
+  let assembly_dn_defs = List.map convert_function fn_defs in
+  Assembly.Program assembly_dn_defs

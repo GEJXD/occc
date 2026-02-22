@@ -6,12 +6,11 @@ module ListUtil = struct
         let res = max cmp t in
         let c = cmp h res in
         if c > 0 then h else res
-
+  
   let rec take_drop n = function
     | h :: t when n > 0 ->
-        let take, remain = take_drop (n - 1) t in
-        (h :: take, remain)
-    | lst -> ([], lst)
+        let l1, l2 = take_drop (n - 1) t in
+        (h :: l1, lw)
 end
 
 module StringUtil = struct
