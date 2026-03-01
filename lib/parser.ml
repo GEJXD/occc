@@ -31,6 +31,45 @@ module Private = struct
     | T.Identifier x -> x
     | other -> raise_error ~expected:(Name "an identifier") ~actual:other
 
+  (* check whether a token is a specifier *)
+  let is_specifier = function
+    | T.KWStatic | T.KWExtern | T.KWInt -> true
+    | _ -> false
+
+  (* <specifier> ::= "int" | "static" | "extern" *)
+  let parse_specifier tokens =
+    let spec = Tok_stream.take_token tokens in
+    if is_specifier spec then spec
+    else
+      raise_error ~expected:(Name "a type or storage-class specifier")
+        ~actual:spec
+
+  let rec parse_specifier_list tokens =
+    let spec = parse_specifier tokens in
+    if is_specifier (Tok_stream.peek tokens) then
+      spec :: parse_specifier_list tokens
+    else [ spec ]
+
+  let parse_storage_class = function
+    | T.KWExtern -> Ast.Extern
+    | T.KWStatic -> Ast.Static
+    | other ->
+        raise_error ~expected:(Name "a storage class specifier") ~actual:other
+
+  let parse_type_and_sotrage_class specifier_list =
+    let types, storage_classes =
+      List.partition (fun tok -> tok = T.KWInt) specifier_list
+    in
+    if List.length types <> 1 then raise (ParserError "Invalid type specifier")
+    else
+      let storage_class =
+        match storage_classes with
+        | [] -> None
+        | [ sc ] -> Some (parse_storage_class sc)
+        | _ :: _ -> raise (ParserError "Invalid storage class")
+      in
+      (Types.Int, storage_class)
+
   let get_precedence = function
     | T.Star | T.Slash | T.Percent -> Some 50
     | T.Plus | T.Hyphen -> Some 45
@@ -195,23 +234,6 @@ module Private = struct
       let _ = expect delimit tokens in
       Some e
 
-  (* <variable_declaration> ::= "int" <identifier> [ "=" <exp> ] ";" *)
-  let parse_variable_declaration tokens =
-    let _ = expect T.KWInt tokens in
-    let var_name = parse_id tokens in
-    let init =
-      match Tok_stream.take_token tokens with
-      | T.Semicolon -> None
-      | T.EqualSign ->
-          let init_exp = parse_exp 0 tokens in
-          let _ = expect T.Semicolon tokens in
-          Some init_exp
-      | other ->
-          raise_error ~expected:(Name "An initializer or semicolon")
-            ~actual:other
-    in
-    Ast.{ name = var_name; init }
-
   (* <param-list> ::= "void" | "int" <identifier> {"," "int" <identifier> } *)
   let parse_param_list tokens =
     if Tok_stream.peek tokens = T.KWVoid then
@@ -228,35 +250,49 @@ module Private = struct
       in
       param_loop ()
 
-  (* function-declaration> ::= "int" <identifier> "(" <param-list> ")" ( <block>
-     | ";" ) *)
-  let rec parse_function_declaration tokens =
-    let _ = expect T.KWInt tokens in
-    let fun_name = parse_id tokens in
-    let _ = expect T.OpenParen tokens in
-    let params = parse_param_list tokens in
-    let _ = expect T.CloseParen tokens in
-    let body =
-      match Tok_stream.peek tokens with
-      | T.Semicolon ->
-          let _ = Tok_stream.take_token tokens in
-          None
-      | _ -> Some (parse_block tokens)
-    in
-    Ast.{ name = fun_name; params; body }
+  (* function-declaration> ::= { <specifier> } <identifier> 
+     "(" <param-list> ")" ( <block> | ";" ) *)
+  (* <variable-declaration> ::= { <specifier> } <identifier> [ "=" <exp> ] ";" *)
+  (* parse function and variable are pretty same, we combine them 
+      as a single function  *)
+  let rec parse_declaration tokens =
+    let specifiers = parse_specifier_list tokens in
+    let _type, storage_class = parse_type_and_sotrage_class specifiers in
+    let name = parse_id tokens in
+    match Tok_stream.peek tokens with
+    (* a function declaration *)
+    | T.OpenParen ->
+        let _ = Tok_stream.take_token tokens in
+        let params = parse_param_list tokens in
+        let _ = expect T.CloseParen tokens in
+        let body =
+          match Tok_stream.peek tokens with
+          | T.Semicolon ->
+              let _ = Tok_stream.take_token tokens in
+              None
+          | _ -> Some (parse_block tokens)
+        in
+        Ast.FunDecl { name; storage_class; params; body }
+    (* a variable declaration *)
+    | tok ->
+        let init =
+          if tok = T.EqualSign then
+            let _ = Tok_stream.take_token tokens in
+            Some (parse_exp 0 tokens)
+          else None
+        in
+        let _ = expect T.Semicolon tokens in
+        Ast.VarDecl { name; storage_class; init }
 
-  (* <declaration> ::= <variable_declaration> | <function_declaration> *)
-  and parse_declaration tokens =
-    match Tok_stream.npeek 3 tokens with
-    (* <function_declaration> ::= "int" <identifier> "(" *)
-    | [ T.KWInt; T.Identifier _; T.OpenParen ] ->
-        Ast.FunDecl (parse_function_declaration tokens)
-    (* <variable_declaration> ::= "int" <identifier> ("=" | ";") *)
-    | _ -> Ast.VarDecl (parse_variable_declaration tokens)
-
+  (* <for-init> ::= <variable-declaration> | [ <exp> ] ";" *)
   and parse_for_init tokens =
-    if Tok_stream.peek tokens = T.KWInt then
-      Ast.InitDecl (parse_variable_declaration tokens)
+    if is_specifier (Tok_stream.peek tokens) then
+      match parse_declaration tokens with
+      | Ast.VarDecl vd -> Ast.InitDecl vd
+      | _ ->
+          raise
+            (ParserError
+               "Found a function declaration in a for loop initialzer.")
     else
       let opt_e = parse_optional_exp T.Semicolon tokens in
       Ast.InitExp opt_e
@@ -344,7 +380,8 @@ module Private = struct
         Ast.Expression exp
 
   and parse_block_item tokens =
-    if Tok_stream.peek tokens = T.KWInt then Ast.D (parse_declaration tokens)
+    if is_specifier (Tok_stream.peek tokens) then
+      Ast.D (parse_declaration tokens)
     else Ast.S (parse_statement tokens)
 
   (* <block> ::= "{" { <block_item } "}" *)
@@ -360,12 +397,12 @@ module Private = struct
     let _ = expect T.CloseBrace tokens in
     Ast.Block block
 
-  (* <program> ::= { <function-declaration> } *)
+  (* <program> ::= { <declaration> } *)
   let parse_program tokens =
     let rec parse_decl_loop () =
       if Tok_stream.is_empty tokens then []
       else
-        let next_decl = parse_function_declaration tokens in
+        let next_decl = parse_declaration tokens in
         next_decl :: parse_decl_loop ()
     in
     let fun_decls = parse_decl_loop () in

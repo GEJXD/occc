@@ -47,7 +47,13 @@ type exp =
   | FunCall of { f : string; args : exp list }
 [@@deriving show]
 
-type variable_declaration = { name : string; init : exp option }
+type storage_class = Static | Extern [@@deriving show]
+
+type variable_declaration = {
+  name : string;
+  init : exp option;
+  storage_class : storage_class option;
+}
 [@@deriving show]
 
 type for_init = InitDecl of variable_declaration | InitExp of exp option
@@ -83,6 +89,7 @@ and function_declaration = {
   name : string;
   params : string list;
   body : block option;
+  storage_class : storage_class option;
 }
 [@@deriving show]
 
@@ -91,4 +98,4 @@ and declaration =
   | VarDecl of variable_declaration
 [@@deriving show]
 
-type t = Program of function_declaration list [@@deriving show]
+type t = Program of declaration list [@@deriving show]

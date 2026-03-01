@@ -12,19 +12,25 @@ type replacement_state = {
 }
 
 let replace_operand state = function
-  | Pseudo id -> begin
-      match StringMap.find_opt id state.offset_map with
-      (* already have assigned this identifier, return Assembly Stack operand *)
-      | Some offset -> (state, Stack offset)
-      (* have not assgiend it *)
-      | None ->
-          let new_offset = state.current_offset - 4 in
-          let new_map = StringMap.add id new_offset state.offset_map in
-          let new_state =
-            { current_offset = new_offset; offset_map = new_map }
-          in
-          (new_state, Stack new_offset)
-    end
+  (* if it's a pseudoregister, replace it with a stack slot *)
+  | Pseudo s -> (
+      if Symbols.is_static s then (state, Data s)
+      else
+        match StringMap.find_opt s state.offset_map with
+        (* We've already assigned this operand a stack slot *)
+        | Some offset -> (state, Stack offset)
+        (* We haven't already assigned it a stack slot;
+         * assign it and update state *)
+        | None ->
+            let new_offset = state.current_offset - 4 in
+            let new_state =
+              {
+                current_offset = new_offset;
+                offset_map = StringMap.add s new_offset state.offset_map;
+              }
+            in
+            (new_state, Stack new_offset))
+  (* not a pseudo, so nothing to do *)
   | other -> (state, other)
 
 let replace_pseudo_in_instruction state = function
@@ -60,15 +66,18 @@ let replace_pseudo_in_instruction state = function
       let state1, new_op = replace_operand state op in
       (state1, Push new_op)
 
-(* the pseudo are seperated by function scope *)
-let replace_pseudo_in_function (Function { name; instructions }) =
-  let init_state = { current_offset = 0; offset_map = StringMap.empty } in
-  let final_state, fixed_instructions =
-    List.fold_left_map replace_pseudo_in_instruction init_state instructions
-  in
-  Symbols.set_bytes_required name final_state.current_offset;
-  Function { name; instructions = fixed_instructions }
+let replace_pseudos_in_tl = function
+  | Function { name; global; instructions } ->
+      let init_state = { current_offset = 0; offset_map = StringMap.empty } in
+      let final_state, fixed_instructions =
+        (* rewrite each instruction, tracking current offset/stack slot map as
+           we go *)
+        List.fold_left_map replace_pseudo_in_instruction init_state instructions
+      in
+      Symbols.set_bytes_required name final_state.current_offset;
+      Function { name; global; instructions = fixed_instructions }
+  | static_var -> static_var
 
-let replace_pseudos (Program fn_defs) =
-  let fixed_defs = List.map replace_pseudo_in_function fn_defs in
+let replace_pseudos (Program top_levels) =
+  let fixed_defs = List.map replace_pseudos_in_tl top_levels in
   Program fixed_defs

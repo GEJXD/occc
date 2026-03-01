@@ -18,7 +18,7 @@ type matched_string = {
 }
 
 (* convert string to Tokens.t *)
-(* tips 1: treat keywords like special identifiers *)
+(* tips: treat keywords like special identifiers *)
 let convert_identifier = function
   | "int" -> T.KWInt
   | "return" -> T.KWReturn
@@ -30,6 +30,8 @@ let convert_identifier = function
   | "for" -> T.KWFor
   | "break" -> T.KWBreak
   | "continue" -> T.KWContinue
+  | "static" -> T.KWStatic
+  | "extern" -> T.KWExtern
   | other -> T.Identifier other
 
 (* convert string to int *)
@@ -157,6 +159,8 @@ let token_to_string = function
   | T.KWBreak -> "break"
   | T.KWContinue -> "continue"
   | T.Comma -> ","
+  | T.KWStatic -> "static"
+  | T.KWExtern -> "extern"
 
 let print_matches matches =
   List.iter

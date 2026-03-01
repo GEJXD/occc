@@ -1,10 +1,14 @@
-open Ast
 open Printf
+open Ast
 
 let rec print_indent indent =
   if indent > 0 then (
     printf "  ";
     print_indent (indent - 1))
+
+(* 新增：存储类转换为字符串的辅助函数 *)
+let string_of_storage_class sc =
+  match sc with Some Static -> "static" | Some Extern -> "extern" | None -> ""
 
 let print_unary_operator op =
   match op with Complement -> "~" | Negate -> "-" | Not -> "!"
@@ -171,10 +175,11 @@ and print_statement ?(indent = 0) stmt =
       print_indent (indent + 1);
       printf "init = ";
       (match init with
-      | InitDecl { name; init } ->
+      | InitDecl { name; init; storage_class } ->
           printf "\n";
           print_indent (indent + 2);
-          printf "InitDecl { name = \"%s\"; init = " name;
+          printf "InitDecl { name = \"%s\"; storage_class = %s; init = " name
+            (string_of_storage_class storage_class);
           (match init with
           | Some e ->
               printf "\n";
@@ -215,10 +220,12 @@ and print_statement ?(indent = 0) stmt =
 and print_declaration ?(indent = 0) decl =
   print_indent indent;
   match decl with
-  | VarDecl { name; init } ->
+  | VarDecl { name; init; storage_class } ->
       printf "VarDecl {\n";
       print_indent (indent + 1);
       printf "name = \"%s\";\n" name;
+      print_indent (indent + 1);
+      printf "storage_class = %s;\n" (string_of_storage_class storage_class);
       print_indent (indent + 1);
       printf "init = ";
       (match init with
@@ -228,10 +235,12 @@ and print_declaration ?(indent = 0) decl =
       | None -> printf "None\n");
       print_indent indent;
       printf "}\n"
-  | FunDecl { name; params; body } ->
+  | FunDecl { name; params; body; storage_class } ->
       printf "FunDecl {\n";
       print_indent (indent + 1);
       printf "name = \"%s\";\n" name;
+      print_indent (indent + 1);
+      printf "storage_class = %s;\n" (string_of_storage_class storage_class);
       print_indent (indent + 1);
       printf "params = [%s];\n"
         (String.concat "; " (List.map (sprintf "\"%s\"") params));
@@ -270,9 +279,10 @@ and print_block ?(indent = 0) (Block items) =
 
 let print_program prog =
   match prog with
-  | Program funcs ->
+  | Program decls ->
       printf "Program([\n";
-      List.iter (fun fd -> print_declaration ~indent:1 (FunDecl fd)) funcs;
+      (* 修复：直接遍历 declaration list，而不是错误地包装为 FunDecl *)
+      List.iter (fun d -> print_declaration ~indent:1 d) decls;
       printf "])\n"
 
 (* ========== Inline Printing (for debugging) ========== *)
@@ -318,11 +328,16 @@ let rec print_statement_inline stmt =
         List.map
           (function
             | S s -> print_statement_inline s
-            | D d -> (
-                match d with
-                | VarDecl { name; init = Some e } ->
-                    sprintf "var %s = %s;" name (print_exp_inline e)
-                | VarDecl { name; init = None } -> sprintf "var %s;" name
+            | D decl -> (
+                match decl with
+                (* 更新：变量声明内联打印支持 storage_class *)
+                | VarDecl { name; init; storage_class } -> (
+                    let sc_str = string_of_storage_class storage_class in
+                    let sc_prefix = if sc_str = "" then "" else sc_str ^ " " in
+                    match init with
+                    | Some e ->
+                        sprintf "%s%s = %s;" sc_prefix name (print_exp_inline e)
+                    | None -> sprintf "%s%s;" sc_prefix name)
                 | FunDecl _ -> "/* function declaration */"))
           items
       in
@@ -340,11 +355,15 @@ let rec print_statement_inline stmt =
         (print_exp_inline condition)
         id
   | For { init; condition; post; body; id } ->
+      (* 更新：For 循环初始化声明支持 storage_class *)
       let init_str =
         match init with
-        | InitDecl { name; init = Some e } ->
-            sprintf "var %s = %s" name (print_exp_inline e)
-        | InitDecl { name; init = None } -> sprintf "var %s" name
+        | InitDecl { name; init; storage_class } -> (
+            let sc_str = string_of_storage_class storage_class in
+            let sc_prefix = if sc_str = "" then "" else sc_str ^ " " in
+            match init with
+            | Some e -> sprintf "%s%s = %s" sc_prefix name (print_exp_inline e)
+            | None -> sprintf "%s%s" sc_prefix name)
         | InitExp (Some e) -> print_exp_inline e
         | InitExp None -> ""
       in

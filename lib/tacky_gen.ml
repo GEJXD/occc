@@ -194,18 +194,19 @@ and emit_tacky_for_block_item = function
   | Ast.D d -> emit_local_declaration d
 
 and emit_local_declaration = function
+  | Ast.VarDecl { storage_class = Some _; _ } -> []
   | Ast.VarDecl s -> emit_var_declaration s
   (* there are only can have function declarations in block. *)
   | Ast.FunDecl _ -> []
 
 and emit_var_declaration = function
   (* a variable declaration with a initializer *)
-  | Ast.{ name; init = Some e } ->
+  | Ast.{ name; init = Some e; _ } ->
       let eval_assignment, _assign_result =
         emit_tacky_for_exp (Ast.Assignment (Var name, e))
       in
       eval_assignment
-  (* need not to have any instructions for declaration without initializer *)
+  (* do not need to have any instructions for declaration without initializer *)
   | Ast.{ init = None; _ } -> []
 
 and emit_tacky_for_if_statement condition then_clause = function
@@ -271,18 +272,31 @@ and emit_tacky_for_for_loop init condition post body id =
   @ (T.Label cont_label :: post_instructions)
   @ [ T.Jump start_label; T.Label br_label ]
 
-let emit_fun_declaration Ast.{ name; params; body } =
-  match body with
-  | Some (Block block_items) ->
+let emit_fun_declaration = function
+  | Ast.FunDecl { name; params; body = Some (Block block_items); _ } ->
+      let global = Symbols.is_global name in
       let body_instructions =
         List.concat_map emit_tacky_for_block_item block_items
       in
       let extra_return = T.(Return (Constant 0)) in
       Some
         (T.Function
-           { name; params; body = body_instructions @ [ extra_return ] })
-  | None -> None
+           { name; global; params; body = body_instructions @ [ extra_return ] })
+  | _ -> None
 
-let tacky_gen (Ast.Program fn_defs) =
-  let tacky_fn_defs = List.filter_map emit_fun_declaration fn_defs in
-  T.Program tacky_fn_defs
+let convert_symbols_to_tacky all_symbols =
+  let to_var (name, entry) =
+    match entry.Symbols.attrs with
+    | Symbols.StaticAttr { init; global } -> (
+        match init with
+        | Initial i -> Some (T.StaticVariable { name; global; init = i })
+        | Tentative -> Some (StaticVariable { name; global; init = 0 })
+        | NoInitializer -> None)
+    | _ -> None
+  in
+  List.filter_map to_var all_symbols
+
+let tacky_gen (Ast.Program decls) =
+  let tacky_fn_defs = List.filter_map emit_fun_declaration decls in
+  let tacky_var_defs = convert_symbols_to_tacky (Symbols.bindings ()) in
+  Tacky.Program (tacky_var_defs @ tacky_fn_defs)

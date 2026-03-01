@@ -66,5 +66,8 @@ type t =
   | KWContinue
   (* function parameters *)
   | Comma (* , *)
+  (* file scope *)
+  | KWStatic
+  | KWExtern
 [@@deriving show]
 (* ppx extension, construct a t.pp *)
