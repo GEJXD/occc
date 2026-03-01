@@ -412,8 +412,6 @@ end
 let parser tokens =
   try
     let token_stream = Tok_stream.of_list tokens in
-    let ast = Private.parse_program token_stream in
-    let _ = Ast_print.print_program ast in
-    ast
+    Private.parse_program token_stream
   with Tok_stream.End_of_stream ->
     raise (ParserError "Unexpected end of file")

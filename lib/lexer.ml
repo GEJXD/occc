@@ -189,7 +189,8 @@ let rec lexer input =
                  ^ String.sub input 0 (min 10 (String.length input))))
         | _ ->
             (* Optional: for debug *)
-            print_matches match_result;
+            (* print_matches match_result; *)
+            print_matches [];
             let longest =
               List.fold_left
                 (fun acc m ->

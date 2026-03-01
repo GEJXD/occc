@@ -6,7 +6,6 @@ let rec print_indent indent =
     printf "  ";
     print_indent (indent - 1))
 
-(* 新增：存储类转换为字符串的辅助函数 *)
 let string_of_storage_class sc =
   match sc with Some Static -> "static" | Some Extern -> "extern" | None -> ""
 
@@ -281,7 +280,6 @@ let print_program prog =
   match prog with
   | Program decls ->
       printf "Program([\n";
-      (* 修复：直接遍历 declaration list，而不是错误地包装为 FunDecl *)
       List.iter (fun d -> print_declaration ~indent:1 d) decls;
       printf "])\n"
 
@@ -330,7 +328,6 @@ let rec print_statement_inline stmt =
             | S s -> print_statement_inline s
             | D decl -> (
                 match decl with
-                (* 更新：变量声明内联打印支持 storage_class *)
                 | VarDecl { name; init; storage_class } -> (
                     let sc_str = string_of_storage_class storage_class in
                     let sc_prefix = if sc_str = "" then "" else sc_str ^ " " in
@@ -355,7 +352,6 @@ let rec print_statement_inline stmt =
         (print_exp_inline condition)
         id
   | For { init; condition; post; body; id } ->
-      (* 更新：For 循环初始化声明支持 storage_class *)
       let init_str =
         match init with
         | InitDecl { name; init; storage_class } -> (

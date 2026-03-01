@@ -4,6 +4,10 @@ let compile stage src_file =
   if stage = Settings.Lex then ()
   else
     let ast = Parser.parser tokens in
+    (* Debug: Print parsing results (AST) *)
+    if !Settings.debug then
+      Ast_print.print_program ast
+    else ();
     if stage = Settings.Parse then ()
     else
       (* resolve identifiers *)
