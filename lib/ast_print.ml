@@ -103,6 +103,26 @@ let rec print_exp ?(indent = 0) exp =
       printf "]\n";
       print_indent indent;
       printf "}\n"
+  | PreIncr operand ->
+      printf "PreIncr(++prefix,\n";
+      print_exp ~indent:(indent + 1) operand;
+      print_indent indent;
+      printf ")\n"
+  | PreDecr operand ->
+      printf "PreDecr(--prefix,\n";
+      print_exp ~indent:(indent + 1) operand;
+      print_indent indent;
+      printf ")\n"
+  | PostIncr operand ->
+      printf "PostIncr(postfix++,\n";
+      print_exp ~indent:(indent + 1) operand;
+      print_indent indent;
+      printf ")\n"
+  | PostDecr operand ->
+      printf "PostDecr(postfix--,\n";
+      print_exp ~indent:(indent + 1) operand;
+      print_indent indent;
+      printf ")\n"
 
 (* ========== Statement Printing ========== *)
 
@@ -308,6 +328,10 @@ let rec print_exp_inline exp =
   | FunCall { f; args } ->
       let args_str = String.concat ", " (List.map print_exp_inline args) in
       sprintf "%s(%s)" f args_str
+  | PreIncr e -> sprintf "(++%s)" (print_exp_inline e)
+  | PreDecr e -> sprintf "(--%s)" (print_exp_inline e)
+  | PostIncr e -> sprintf "(%s++)" (print_exp_inline e)
+  | PostDecr e -> sprintf "(%s--)" (print_exp_inline e)
 
 let rec print_statement_inline stmt =
   match stmt with

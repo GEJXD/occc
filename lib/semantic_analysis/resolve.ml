@@ -31,6 +31,34 @@ let rec resolve_exp id_map = function
       with Not_found -> failwith (Printf.sprintf "Undeclared variable %s" id)
     end
   | Unary (op, e) -> Unary (op, resolve_exp id_map e)
+  | PreIncr e ->
+      let e' = resolve_exp id_map e in
+      if check_lvalue e' then PreIncr e'
+      else
+        failwith
+          (Format.asprintf
+             "Expected lvalue for prefix ++, found %a" pp_exp e')
+  | PreDecr e ->
+      let e' = resolve_exp id_map e in
+      if check_lvalue e' then PreDecr e'
+      else
+        failwith
+          (Format.asprintf
+             "Expected lvalue for prefix --, found %a" pp_exp e')
+  | PostIncr e ->
+      let e' = resolve_exp id_map e in
+      if check_lvalue e' then PostIncr e'
+      else
+        failwith
+          (Format.asprintf
+             "Expected lvalue for postfix ++, found %a" pp_exp e')
+  | PostDecr e ->
+      let e' = resolve_exp id_map e in
+      if check_lvalue e' then PostDecr e'
+      else
+        failwith
+          (Format.asprintf
+             "Expected lvalue for postfix --, found %a" pp_exp e')
   | Binary (op, e1, e2) ->
       Binary (op, resolve_exp id_map e1, resolve_exp id_map e2)
   | Conditional { condition; then_result; else_result } ->

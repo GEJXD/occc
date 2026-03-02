@@ -17,7 +17,8 @@ type t =
   (* unary operators *)
   | Tilde
   | Hyphen
-  (* misc *)
+  (* increment / decrement *)
+  | DoublePlus
   | DoubleHyphen
   (* binary operators *)
   | Plus

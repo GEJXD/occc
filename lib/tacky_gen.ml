@@ -60,6 +60,32 @@ let rec emit_tacky_for_exp = function
   | Ast.CompoundAssign (op, Ast.Var v, rhs) ->
       emit_compound_assignment_expression op v rhs
   | Ast.CompoundAssign _ -> failwith "Internal Error: bad lvalue"
+  | Ast.PreIncr (Ast.Var v) ->
+      let var = T.Var v in
+      ([ T.Binary { op = T.Add; src1 = var; src2 = T.Constant 1; dst = var } ], var)
+  | Ast.PreDecr (Ast.Var v) ->
+      let var = T.Var v in
+      ( [ T.Binary { op = T.Subtract; src1 = var; src2 = T.Constant 1; dst = var } ],
+        var )
+  | Ast.PostIncr (Ast.Var v) ->
+      let var = T.Var v in
+      let temp = T.Var (Unique_ids.make_temporary ()) in
+      ( [
+          T.Copy { src = var; dst = temp };
+          T.Binary { op = T.Add; src1 = var; src2 = T.Constant 1; dst = var };
+        ],
+        temp )
+  | Ast.PostDecr (Ast.Var v) ->
+      let var = T.Var v in
+      let temp = T.Var (Unique_ids.make_temporary ()) in
+      ( [
+          T.Copy { src = var; dst = temp };
+          T.Binary
+            { op = T.Subtract; src1 = var; src2 = T.Constant 1; dst = var };
+        ],
+        temp )
+  | Ast.PreIncr _ | Ast.PreDecr _ | Ast.PostIncr _ | Ast.PostDecr _ ->
+      failwith "Internal Error: increment/decrement requires lvalue"
   | Ast.Conditional { condition; then_result; else_result } ->
       emit_conditional_expression condition then_result else_result
   | Ast.FunCall { f; args } -> emit_fun_call f args

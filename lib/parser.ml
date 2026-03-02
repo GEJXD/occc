@@ -148,36 +148,57 @@ module Private = struct
         true
     | _ -> false
 
-  (* <factor> ::= | <int> | <identifier> | <unop> <factor> | | "(" <exp> ")" |
-     <identifier> "(" [ <argument-list> ] ")"*)
-  let rec parse_factor tokens =
+  (* <primary> ::= <int> | <identifier> [ "(" [ <argument-list> ] ")" ] | "(" <exp> ")" *)
+  let rec parse_primary tokens =
     match Tok_stream.peek tokens with
     | T.Constant _ -> parse_int tokens
     | T.Identifier _ ->
         let id = parse_id tokens in
-        (* a function call *)
         if Tok_stream.peek tokens = T.OpenParen then
           let _ = Tok_stream.take_token tokens in
           let args =
-            (* have no argument *)
             if Tok_stream.peek tokens = T.CloseParen then []
             else parse_argument_list tokens
           in
           let _ = expect T.CloseParen tokens in
           Ast.FunCall { f = id; args }
         else Ast.Var id
-    (* Unary expressions *)
+    | T.OpenParen ->
+        let _ = Tok_stream.take_token tokens in
+        let expr = parse_exp 0 tokens in
+        expect T.CloseParen tokens;
+        expr
+    | other -> raise_error ~expected:(Name "a primary expression") ~actual:other
+
+  (* <postfix> ::= <primary> { "++" | "--" } *)
+  and parse_postfix tokens =
+    let left = parse_primary tokens in
+    let rec loop acc =
+      match Tok_stream.peek tokens with
+      | T.DoublePlus ->
+          let _ = Tok_stream.take_token tokens in
+          loop (Ast.PostIncr acc)
+      | T.DoubleHyphen ->
+          let _ = Tok_stream.take_token tokens in
+          loop (Ast.PostDecr acc)
+      | _ -> acc
+    in
+    loop left
+
+  (* <factor> ::= <postfix> | "++" <factor> | "--" <factor> | <unop> <factor> *)
+  and parse_factor tokens =
+    match Tok_stream.peek tokens with
+    | T.DoublePlus ->
+        let _ = Tok_stream.take_token tokens in
+        Ast.PreIncr (parse_factor tokens)
+    | T.DoubleHyphen ->
+        let _ = Tok_stream.take_token tokens in
+        Ast.PreDecr (parse_factor tokens)
     | T.Tilde | T.Hyphen | T.Bang ->
         let opera = parse_unop tokens in
         let inner_exp = parse_factor tokens in
         Ast.Unary (opera, inner_exp)
-    | T.OpenParen ->
-        let _ = Tok_stream.take_token tokens in
-        let expr = parse_exp 0 tokens in
-        (* condition like -(2 + 3) *)
-        expect T.CloseParen tokens;
-        expr
-    | other -> raise_error ~expected:(Name "a factor") ~actual:other
+    | _ -> parse_postfix tokens
 
   and parse_argument_list tokens =
     let arg = parse_exp 0 tokens in

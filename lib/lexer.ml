@@ -56,6 +56,7 @@ let match_rules =
     generate_rule ";" (convert_literal T.Semicolon);
     generate_rule "-" (convert_literal T.Hyphen);
     generate_rule "--" (convert_literal T.DoubleHyphen);
+    generate_rule {_|\+\+|_} (convert_literal T.DoublePlus);
     generate_rule "~" (convert_literal T.Tilde);
     generate_rule {_|\+|_} (convert_literal T.Plus);
     generate_rule {_|\*|_} (convert_literal T.Star);
@@ -120,6 +121,7 @@ let token_to_string = function
   | T.Tilde -> "~"
   | T.Hyphen -> "-"
   | T.DoubleHyphen -> "--"
+  | T.DoublePlus -> "++"
   | T.Plus -> "+"
   | T.Star -> "*"
   | T.Slash -> "/"

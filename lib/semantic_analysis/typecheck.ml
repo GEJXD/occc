@@ -24,6 +24,7 @@ let rec typecheck_exp = function
       | Int -> ()
       | FunType _ -> failwith "Tried to use function name as variable ")
   | Unary (_, inner) -> typecheck_exp inner
+  | PreIncr e | PreDecr e | PostIncr e | PostDecr e -> typecheck_exp e
   | Binary (_, e1, e2) ->
       typecheck_exp e1;
       typecheck_exp e2

@@ -45,6 +45,12 @@ type exp =
   | CompoundAssign of compound_operator * exp * exp
   | Conditional of { condition : exp; then_result : exp; else_result : exp }
   | FunCall of { f : string; args : exp list }
+  (* prefix: ++a / --a — increment/decrement then evaluate to new value *)
+  | PreIncr of exp
+  | PreDecr of exp
+  (* postfix: a++ / a-- — increment/decrement but evaluate to old value *)
+  | PostIncr of exp
+  | PostDecr of exp
 [@@deriving show]
 
 type storage_class = Static | Extern [@@deriving show]
