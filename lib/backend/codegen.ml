@@ -31,7 +31,7 @@ let convert_cond_code = function
   | Tacky.LessOrEqual -> Assembly.LE
   | Tacky.GreaterOrEqual -> Assembly.GE
   | Tacky.GreaterThan -> Assembly.G
-  | _ -> failwith "Interal error: not a condition op"
+  | _ -> failwith "Internal error: not a condition op"
 
 let convert_function_call f args dst =
   let reg_args, stack_args = Utils.ListUtil.take_drop 6 args in

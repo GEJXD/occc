@@ -28,7 +28,7 @@ let convert_binop = function
   | Ast.GreaterThan -> T.GreaterThan
   | Ast.GreaterOrEqual -> T.GreaterOrEqual
   | Ast.And | Ast.Or ->
-      failwith "Internal error. cannot conovert these directly to TACKY binops"
+      failwith "Internal error. cannot convert these directly to TACKY binops"
 
 let convert_comop = function
   | Ast.AddAssign -> T.Add

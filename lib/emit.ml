@@ -42,7 +42,7 @@ let show_byte_reg = function
   | R8 -> "%r8b"
   | R9 -> "%r9b"
   | R10 -> "%r10b"
-  | R11 -> "r%11b"
+  | R11 -> "%r11b"
 
 let show_byte_operand = function
   | Reg reg -> show_byte_reg reg

@@ -87,7 +87,7 @@ and typecheck_local_var_decl { name; init; storage_class } =
       | Some { t; _ } ->
           (* if an external local var is already in the symbol table, don't need
              to add it *)
-          if t <> Int then failwith "Funcion redelcared as variable" else ()
+          if t <> Int then failwith "Funcion redeclared as variable" else ()
       | None ->
           Symbols.add_static_var name ~t:Int ~init:NoInitializer ~global:true
     end
@@ -114,7 +114,7 @@ and typecheck_fn_decl { name; params; body; storage_class } =
       match attrs with
       | Symbols.FunAttr { global = prev_global; defined = prev_defined; _ } ->
           if prev_defined && has_body then
-            failwith ("Defined body of function" ^ name ^ "twice")
+            failwith ("Defined body of function " ^ name ^ " twice")
           else if prev_global && storage_class = Some Static then
             failwith "Static function declaration follows non-static"
           else
